@@ -4,88 +4,6 @@ var startTime = getTime();
 
 //I plan on doing optimization maybe but I haven't gotten to that yet. the code so far is very messy
 
-//random icons are currently used because debuffs have no image
-
-void function dontJerma(){ //im tired of seeing the same thing
-  var randomBank = ['munci.png','2401725_f018d.png','dawg.png','shrec.png','ninja.png'];
-  setImageURL("Ally1",randomBank[randomNumber(0,randomBank.length-2)]);
-  setImageURL("Ally2",randomBank[randomNumber(0,randomBank.length-1)]);
-  setImageURL("Enemy1",randomBank[randomNumber(0,randomBank.length-1)]);
-  setImageURL("Enemy2",randomBank[randomNumber(0,randomBank.length-1)]);
-  setImageURL("Enemy3",randomBank[randomNumber(0,randomBank.length-1)]);
-}();
-//menu flavs might not be used
-var menuFlavors = ["Raspberry","Blueberry","Coconut","Banana","Mango" , "Pear","Carbon"];
-//                 red-pink    blue         white     yellow   orange-ish  green  grey
-function getMenuColor(flavor,accentType){
-  switch (flavor){
-    case "Raspberry"://done
-      switch (accentType){
-        case "light": return rgb(230,51,115);
-        case "mid"  : return rgb(203, 16, 83);
-        case "dark" : return rgb(162, 0, 58);
-      }
-      break;
-    case "Blueberry"://done
-      switch (accentType){
-        case "light": return rgb(51,151,230);
-        case "mid"  : return rgb(16, 99, 203);
-        case "dark" : return rgb(0, 60, 162);
-      }
-      break;
-    case "Coconut"://done
-      switch (accentType){
-        case "light": return rgb(248,246,239);
-        case "mid"  : return rgb(215,203,180);
-        case "dark" : return rgb(162,93,0);
-      }
-      break;
-    case "Bannana"://done
-      switch (accentType){
-        case "light": return rgb(230,214,51);
-        case "mid"  : return rgb(203, 193, 16);
-        case "dark" : return rgb(162, 159, 0);
-      }
-      break;
-    case "Mango"://done
-      switch (accentType){
-        case "light": return rgb(230, 200, 51);
-        case "mid"  : return rgb(203, 144, 16);
-        case "dark" : return rgb(162, 111, 0);
-      }
-      break;
-    case "Pear"://done
-      switch (accentType){
-        case "light": return rgb(51,230,116);
-        case "mid"  : return rgb(16, 203, 42);
-        case "dark" : return rgb(38, 162, 0);
-      }
-      break;
-    default://done
-      switch (accentType){//Black and Grey combo
-        case "light": return rgb(83, 83, 83);
-        case "mid"  : return rgb(69, 69, 69);
-        case "dark" : return rgb(51,51,51);
-      }
-      break;
-  }
-}
-
-function flav(flavor){
-  setScreen("MenuFlavorTest");
-  setProperty("l","background-color",getMenuColor(flavor,"light"));
-  setProperty("m","background-color",getMenuColor(flavor,"mid"));
-  setProperty("d","background-color",getMenuColor(flavor,"dark"));
-  setProperty("light","background-color",getMenuColor(flavor,"light"));
-  setProperty("mid","background-color",getMenuColor(flavor,"mid"));
-  setProperty("dark","background-color",getMenuColor(flavor,"dark"));
-}//used to colorize menus
-
-var random = menuFlavors[randomNumber(0,menuFlavors.length-1)];
-setProperty("Ally1HPLabel","background-color",getMenuColor(random,"light"));
-
-//all of the above is TEMPORARY, THEY WILL BE REMOVED
-
 var playerData = { //most values will be encoded here, refer to the DGV for readable data
   "id" : 0,
   "internalData" : "",
@@ -103,8 +21,6 @@ var Inventory = [];//store all items here as strings
 
 var internalData = []; //splice the string into this!
 
-var enchantData = {equipped:[],unequipped:[]};//stores as [[enchantName, active]] -- NOT IMPLEMENTED YET
-
 //decode what the player has into playermoves
 var leftoverXp = 0;
 var level = 25; //25 is the max level
@@ -113,7 +29,7 @@ var location = ""; //used for story save data
 //quick note; "self" doesn't seem to exist in these values here but it gets implemented when being converted into battlefield vars
 var playerSlot = null; //stuff like A1 or A2, used as "self" for when we need to call upon items and stuff
 
-var instance = { //utility creator functions since it gets really inconvenient to spam these 3-4 things
+var instance = { 
   newLabel : function(name,x,y,w,h,color,text,txtColor) {
     textLabel(name,text);
     setPosition(name,x,y,w,h);
@@ -129,54 +45,50 @@ var instance = { //utility creator functions since it gets really inconvenient t
   newImage : function(name,x,y,width,height,imageURL){
     image(name,imageURL || "nil.png");
     setPosition(name,x,y,width,height);
-    setStyle(name, "user-drag: none; user-select: none; -webkit-user-drag: none;");//using CSS to make them un-draggable
+    setStyle(name, "user-drag: none; user-select: none; -webkit-user-drag: none;");
   },
 };
 
 var player = {
-  Name : "PLAYER",//replace with player username eventually
+  Name : "PLAYER",
   "hp" : 10+Math.round(Math.pow(level,1.399)),
-  "atk" : Math.round(Math.pow(level,0.7)), //prevent lvl 1 from having 2 atk
-  "crg" : 10, //used to execute specials
-  "def" : 0, //dmg mitigation, acts as a dmg threshold, any dmg below this does 0
+  "atk" : Math.round(Math.pow(level,0.7)),
+  "crg" : 10,
+  "def" : 0,
   messages : ["hi"],
-  "actions" : {},//this is rendered in game
+  "actions" : {},
   logic : function(side, code){ //the values here are THE PLAYER (We can use this to reference itself)
     playerSlot = code;
     if (battlefield.allies[playerSlot].hp.cur <=0) {cycle();//skip the player in case they get accidently given a turn
       return}
-    showElement("Action"); //show menus
+    showElement("Action");
     showElement("Item");
     showElement("Pass");
   }
 };
 
-function updatePlayerData(type){ //use for data updates or level ups
-  if (type === "lvl") {//level up
-    var nextLvlXp = 0;
-    for (var lv = 1; lv<=25;lv++){//counting to 25 because that is the maximum level
+function updatePlayerLevels(){ 
+  var nextLvlXp = 0;
+    for (var lv = 1; lv<=25;lv++){
       if (playerData.Xp <Math.floor((10*Math.pow(lv+1,1.5)))){
-        // console.log("LEVEL FOUND: "+lv+" | leftover: "+(playerData.Xp - Math.floor((10*Math.pow(lv-1,1.5)))));
         level = lv;
         leftoverXp = playerData.Xp - Math.floor((10*Math.pow(lv-1,1.5)));
         nextLvlXp = (Math.floor(10*Math.pow(lv+1,1.5)))- playerData.Xp;
         break;
       } else {
-        level = 25;//we know they hit the highest possible level if so
+        level = 25;
         leftoverXp = playerData.Xp-1250;
       }
     }
     player.hp = 10+Math.round(Math.pow(level,1.399));
     player.atk = Math.round(Math.pow(level,0.7));
     setText("levelLabel","level "+level+" | "+playerData.Xp+ " total xp | "+nextLvlXp+" xp left to lvl "+(level+1));
-  }
 }
 
-//story elements
 var chapter = 0;
 var section = "";//subsection of a chapter, basically a new interaction
 var SPart = 0; //scene of a section
-var curSong = null; //dont allow music to overlap and know what song is currently playing
+var curSong = null;
 
 //field
 var battlefield = { //where battles are handled and managed
@@ -194,37 +106,37 @@ var battlefield = { //where battles are handled and managed
   activeEnemies : [], //used by the ally to not accidently hit a dead enemy and for AoE attacks
 };
 
-var activeDamageTimers = {};//this is where all damage counters are kept track in
+var activeDamageTimers = {};
 
-function labelCreator(side, v,amount,heal) { //manages the damage counter creation, "v" marks the index number, such as what entity number they are
+function labelCreator(side, entityIndex,amount,heal) {
   if (side == "allies") {
-    if (activeDamageTimers["Hurt_A"+v]) { //if we can find the damage timer, we know it still exists
-      if (amount <= 0) {setText("Hurt_A"+v,0)} else {setText("Hurt_A"+v ,amount + parseInt(getText("Hurt_A"+v)))}
-      setPosition("Hurt_A"+v,
-        getProperty("Ally"+v,"x")+(getProperty("Ally"+v,"width")/2),
-        getProperty("Ally"+v,"y")+(getProperty("Ally"+v,"height")/2),
-        getProperty("Ally"+v,"width"),
-        getProperty("Ally"+v,"height")
+    if (activeDamageTimers["Hurt_A"+entityIndex]) { //if we can find the damage timer, we know it still exists
+      if (amount <= 0) {setText("Hurt_A"+entityIndex,0)} else {setText("Hurt_A"+entityIndex ,amount + parseInt(getText("Hurt_A"+entityIndex)))}
+      setPosition("Hurt_A"+entityIndex,
+        getProperty("Ally"+entityIndex,"x")+(getProperty("Ally"+entityIndex,"width")/2),
+        getProperty("Ally"+entityIndex,"y")+(getProperty("Ally"+entityIndex,"height")/2),
+        getProperty("Ally"+entityIndex,"width"),
+        getProperty("Ally"+entityIndex,"height")
       );
       playSound(heal && "OO_heal.mp3" || "OO_Hurt.mp3");
-      setProperty("Hurt_A"+v,"text-color",amount <=0 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
-      activeDamageTimers["Hurt_A"+v] = 2000; //reset the timer back to 2000 ms
+      setProperty("Hurt_A"+entityIndex,"text-color",amount <=0 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
+      activeDamageTimers["Hurt_A"+entityIndex] = 2000; //reset the timer back to 2000 ms
     } else {
-      textLabel("Hurt_A"+v ,amount);
-      setPosition("Hurt_A"+v,
-        getProperty("Ally"+v,"x")+(getProperty("Ally"+v,"width")/2),
-        getProperty("Ally"+v,"y")+(getProperty("Ally"+v,"height")/2),
-        getProperty("Ally"+v,"width"),
-        getProperty("Ally"+v,"height")
+      textLabel("Hurt_A"+entityIndex ,amount);
+      setPosition("Hurt_A"+entityIndex,
+        getProperty("Ally"+entityIndex,"x")+(getProperty("Ally"+entityIndex,"width")/2),
+        getProperty("Ally"+entityIndex,"y")+(getProperty("Ally"+entityIndex,"height")/2),
+        getProperty("Ally"+entityIndex,"width"),
+        getProperty("Ally"+entityIndex,"height")
       );
-      setProperty("Hurt_A"+v,"text-color",amount <=0 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
-      setProperty("Hurt_A"+v,"font-family","Arial Black");
+      setProperty("Hurt_A"+entityIndex,"text-color",amount <=0 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
+      setProperty("Hurt_A"+entityIndex,"font-family","Arial Black");
       playSound(heal && "OO_heal.mp3" || "OO_Hurt.mp3");
-      activeDamageTimers["Hurt_A"+v] = 2000;
-      function runTimerA(name,time){ //essentially a glorified tick function
-        activeDamageTimers[name] -= 50;//a tick every 50ms prevents too much overhead
+      activeDamageTimers["Hurt_A"+entityIndex] = 2000;
+      function runTimerA(name,time){
+        activeDamageTimers[name] -= 50;
         setTimeout(function(){
-          var colorArr = stripRGBValues(getProperty(name,"text-color")); //splitting into the proper [r,g,b] array
+          var colorArr = stripRGBValues(getProperty(name,"text-color"));
           if (activeDamageTimers[name]<=1000) {setProperty(name,"text-color",rgb(colorArr.red,colorArr.green,colorArr.blue,activeDamageTimers[name]/1000))} else {setProperty(name,"text-color",rgb(colorArr.red,colorArr.green,colorArr.blue,1))}
           if (activeDamageTimers[name] <= 0){
             deleteElement(name);
@@ -233,37 +145,36 @@ function labelCreator(side, v,amount,heal) { //manages the damage counter creati
           runTimerA(name,activeDamageTimers[name]);
         },50);
       }
-      runTimerA("Hurt_A"+v,2000);
-      bounce("Hurt_A"+v,"y");
+      runTimerA("Hurt_A"+entityIndex,2000);
+      bounce("Hurt_A"+entityIndex,"y");
     }
   } else {//ENEMY TIMER //////////////////////////////////////////////
-    if (activeDamageTimers["Hurt_E"+v]) { //if we can find the damage timer we know it still exists
-      if (amount <= 0) {setText("Hurt_E"+v,0)} else {setText("Hurt_E"+v ,amount + parseInt(getText("Hurt_E"+v)))}
-       
-      setPosition("Hurt_E"+v,
-        getProperty("Enemy"+v,"x")+(getProperty("Enemy"+v,"width")/2),
-        getProperty("Enemy"+v,"y")+(getProperty("Enemy"+v,"height")/2),
-        getProperty("Enemy"+v,"width"),
-        getProperty("Enemy"+v,"height")
+    if (activeDamageTimers["Hurt_E"+entityIndex]) { 
+      if (amount <= 0) {setText("Hurt_E"+entityIndex,0)} else {setText("Hurt_E"+entityIndex ,amount + parseInt(getText("Hurt_E"+entityIndex)))}
+      setPosition("Hurt_E"+entityIndex,
+        getProperty("Enemy"+entityIndex,"x")+(getProperty("Enemy"+entityIndex,"width")/2),
+        getProperty("Enemy"+entityIndex,"y")+(getProperty("Enemy"+entityIndex,"height")/2),
+        getProperty("Enemy"+entityIndex,"width"),
+        getProperty("Enemy"+entityIndex,"height")
       );
-      setProperty("Hurt_E"+v,"text-color",amount < 1 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
-      activeDamageTimers["Hurt_E"+v] = 2000;
+      setProperty("Hurt_E"+entityIndex,"text-color",amount < 1 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
+      activeDamageTimers["Hurt_E"+entityIndex] = 2000;
     } else {
-       textLabel("Hurt_E"+v ,amount);
+       textLabel("Hurt_E"+entityIndex ,amount);
       
-      setPosition("Hurt_E"+v,
-        getProperty("Enemy"+v,"x")+(getProperty("Enemy"+v,"width")/2),
-        getProperty("Enemy"+v,"y")+(getProperty("Enemy"+v,"height")/2),
-        getProperty("Enemy"+v,"width"),
-        getProperty("Enemy"+v,"height")
+      setPosition("Hurt_E"+entityIndex,
+        getProperty("Enemy"+entityIndex,"x")+(getProperty("Enemy"+entityIndex,"width")/2),
+        getProperty("Enemy"+entityIndex,"y")+(getProperty("Enemy"+entityIndex,"height")/2),
+        getProperty("Enemy"+entityIndex,"width"),
+        getProperty("Enemy"+entityIndex,"height")
       );
-      setProperty("Hurt_E"+v,"text-color",amount < 1 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
-      setProperty("Hurt_E"+v,"font-family","Arial Black");
-      activeDamageTimers["Hurt_E"+v] = 2000;
-      function runTimer(name){ //essentially a glorified tick function
-        activeDamageTimers[name] -= 50;//ticking every 50 ms prevents overhead
+      setProperty("Hurt_E"+entityIndex,"text-color",amount < 1 && rgb(60,251,247) || heal && rgb(0,225,0) || rgb(225,0,0));
+      setProperty("Hurt_E"+entityIndex,"font-family","Arial Black");
+      activeDamageTimers["Hurt_E"+entityIndex] = 2000;
+      function runTimer(name){ 
+        activeDamageTimers[name] -= 50;
         setTimeout(function(){
-          var colorArr = stripRGBValues(getProperty(name,"text-color")); //splitting into the proper [r,g,b] array
+          var colorArr = stripRGBValues(getProperty(name,"text-color"));
           if (activeDamageTimers[name]<=1000 && activeDamageTimers[name]>0) {setProperty(name,"text-color",rgb(colorArr.red,colorArr.green,colorArr.blue,activeDamageTimers[name]/1000))}
           if (activeDamageTimers[name] <= 0){
             deleteElement(name);
@@ -272,8 +183,8 @@ function labelCreator(side, v,amount,heal) { //manages the damage counter creati
           runTimer(name,activeDamageTimers[name]);
         },50);
       }
-      runTimer("Hurt_E"+v);
-      bounce("Hurt_E"+v,"y");
+      runTimer("Hurt_E"+entityIndex);
+      bounce("Hurt_E"+entityIndex,"y");
     }
   }
 }
@@ -287,8 +198,8 @@ function stripRGBValues(rgbValue){//make rgb() easier to manage into an array of
   return {red: Number(rgbValue[0]),green:Number(rgbValue[1]),blue:Number(rgbValue[2])};
 }
 
-var index = 0; //i dont have another way of making differentiating Ids
-var cacheEffects = [];//list of the effects and their names, if they die with their icon, scrap it when the battle ends
+var index = 0;
+var cacheEffects = [];
 
 function statusEffectIcon(side,target,effect,typeE){
   //THIS ONLY HANDLES IMAGE CREATION; WE DO NOT DEAL WITH DELETION HERE
@@ -315,7 +226,7 @@ function statusEffectIcon(side,target,effect,typeE){
   cacheEffects.push(effect+battlefield[side][target][typeE][effect].index+"_stack");
 }
 
-var utility = { //utility functions that manage battlefield data, aids with debuffs and buffs
+var utility = { 
   //hp functions are seperate because they need to show damage taken, and is often used
   heal : function(target, amount,side){
     labelCreator(side,target.substring(1,2),amount,true);
@@ -326,11 +237,10 @@ var utility = { //utility functions that manage battlefield data, aids with debu
     }
   },
   damage : function(target, amount, side,debuff){ //offload the damage instancing creator here for 100% acc
-    // console.log("Damage controller recieved: "+target+ "    | amount recieved (no defense): "+amount)
     if (!battlefield[side][target]) {return}
     try {//there are small chances that the recieved target is null because of improper entity removal from the battlefield; it is VERY rare though and it causes a fatal error
-      if (!debuff) {amount-=battlefield[side][target].def.cur}//makes it NaN if def>1, do they have defense?
-      if (amount<1) {//this means the attack was negated, make blue text appear
+      if (!debuff) {amount-=battlefield[side][target].def.cur}
+      if (amount<1) {
         playSound("sound://category_collect/retro_game_powerup_6.mp3");
         labelCreator(side,target.substring(1,2),amount);
         return;
@@ -338,8 +248,8 @@ var utility = { //utility functions that manage battlefield data, aids with debu
       shake((capFirstLetter(side)).substring(0,side.length-3)+"y"+target.substring(1,2), 10, 1000,true);
       labelCreator(side,target.substring(1,2),amount);
       if (battlefield[side][target].hp.cur - amount <= 0) {battlefield[side][target].hp.cur = 0} else {battlefield[side][target].hp.cur -= amount}
-    } catch(e){//since this function is used the most, deal with it here
-      console.log(e + " encountered!");
+    } catch(error){
+      console.log(error + " encountered!");
       console.log("we recieved "+target+" from "+ side +" but something went wrong");
       setText("BattleBox","Something went wrong, but the game can still run [Address; UTILITY.DAMAGE()]");
     }
@@ -390,13 +300,12 @@ var utility = { //utility functions that manage battlefield data, aids with debu
         delete battlefield[side][target][effectType][effect][randomPick];
       }
       
-    } catch(error) {//should error if there are 0 effects or if it doesn't exist
+    } catch(error) {
       setText("BattleBox","Cleanse failed! Or the effect doesn't exist");
     }
   },//remove debuffs for cleansing
 };
 
-//MASTER DICTIONARY; gets added alongside allies
 
 var characters = { //allies 
   "MG_Tut" : { //temporary name
@@ -434,7 +343,7 @@ var characters = { //allies
     hp : 25,
     atk : 2,
     def : 0,
-    Name: "NotAWitch", 
+    Name: "Witch", 
     messages: ["Im bewitched you'd ever say that", "I can give you a funny elixir"],
     action : {//they do nothing as of right now
       slash : function(side,code,thisSide,self){ //TEMP EMPTY; deals 4 dmg, inflicts 1 stack of poison
@@ -468,34 +377,34 @@ var enemies = {//following OOP structure here
       clap : function(target,side,self){ //slam
         playSound("readyToDodge.mp3");
         setText("BattleBox","Spiker is getting ready to rush you!");
-        var ogPos = [getProperty(self,"x"),getProperty(self,"y")]; //[x,y]
-        globalTarget = target; //Use this for the dodges,
-        globalSide = side;//this is also needed here for dodges
-        startDodge([{time : 2000, dmg: 6}, {time : 1500, dmg : 8,dodgeArray : {"Perfect" : 300, "Great" : 600, "Okay" : 900}}]);
-        var r1 = new TweenService.create(self,{x:120,y : getProperty("Ally"+target.substring(target.length-1,target.length),"y")},1,'Sine',"Out",60);
+        var ogPos = [ getProperty(self,"x") , getProperty(self,"y") ];
+        globalTarget = target; 
+        globalSide = side;
+        startDodge( [ {time : 2000, dmg: 6}, {time : 1500, dmg : 8, dodgeArray : {"Perfect" : 300, "Great" : 600, "Okay" : 900}} ] );
+        var r1 = new TweenService.create( self, {x:120,y : getProperty("Ally"+target.substring(target.length-1,target.length),"y")},1,'Sine',"Out",60);
         r1.play();
         setTimeout(function(){//strike
         playSound("sound://category_music/vibrant_fanfare_harp_sweep_positive.mp3");
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.85,'Sine',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.85,'Sine',"In",60);
           r1.play();
         },1100);
         setTimeout(function(){//recoil
           playSound("sound://category_hits/retro_game_weapon_-_sword_on_shield_3.mp3");
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.75,'Sine',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.75,'Sine',"In",60);
           r1.play();
         },2000);
         setTimeout(function(){//2nd strike
           playSound("sound://category_alerts/vibrant_game_shutter_alert_1_short_quick.mp3");
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.2,'Sine',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.2,'Sine',"In",60);
           r1.play();
         },2800);
         setTimeout(function(){//recoil
           playSound("sound://category_explosion/playful_game_explosion_5.mp3");
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.5,'Linear',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.5,'Linear',"In",60);
           r1.play();
         },3000);
         setTimeout(function(){//return
-          var r1 = new TweenService.create(self,{x : ogPos[0], y:ogPos[1]},0.85,'Linear',"In",60);
+          var r1 = new TweenService.create( self, {x : ogPos[0], y:ogPos[1]},0.85,'Linear',"In",60);
           r1.play();
         },3100);
       },
@@ -504,38 +413,38 @@ var enemies = {//following OOP structure here
         setText("BattleBox", "Spiker is deciding to stare... and hit!");
         globalTarget = target; //Use this for the dodges,
         globalSide = side;
-        startDodge([{time : 2500, dmg: 1}, {time : 2000, dmg : 2, }]);
-        var r1 = new TweenService.create(self,{x:120,y : getProperty("Ally"+target.substring(target.length-1,target.length),"y")},1.5,'Sine',"Out",60);
+        startDodge( [ {time : 2500, dmg: 1}, {time : 2000, dmg : 2} ]);
+        var r1 = new TweenService.create( self, {x:120,y : getProperty("Ally"+target.substring(target.length-1,target.length),"y")},1.5,'Sine',"Out",60);
         r1.play();
         setTimeout(function(){ //strike
           playSound("sound://category_music/vibrant_fanfare_harp_sweep_positive.mp3");
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.85,'Sine',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.85,'Sine',"In",60);
           r1.play();
         },1650);
         setTimeout(function(){ //recoil
           playSound("sound://category_explosion/8bit_explosion.mp3");
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.75,'Sine',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.75,'Sine',"In",60);
           r1.play();
         },2500);
         setTimeout(function(){//2nd strike
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.5,'Sine',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.5,'Sine',"In",60);
           r1.play();
         },3500);
         setTimeout(function(){//recoil
           playSound("sound://category_hits/8bit_splat.mp3");
-          var r1 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.5,'Linear',"In",60);
+          var r1 = new TweenService.create( self, {x : getProperty("Ally"+target.substring(target.length-1,target.length),"x") + 50},0.5,'Linear',"In",60);
           r1.play();
         },4000);
         setTimeout(function(){//return
-          var r1 = new TweenService.create(self,{x : ogPos[0], y:ogPos[1]},0.85,'Linear',"In",60);
+          var r1 = new TweenService.create( self, {x : ogPos[0], y:ogPos[1]},0.85,'Linear',"In",60);
           r1.play();
         },4100);
       }
     },
     logic : function(side, code){ //the enemy recieves itself, DO NOT USE SIDE OR CODE
-      if (battlefield.enemies["E" + code.substring(code.length-1,code.length)].hp.cur ==0) {
+      if (battlefield.enemies["E" + code.substring(code.length-1,code.length)].hp.cur == 0) {
         showElement("Button");
-        setText("BattleBox","Misfire occured; just press continue");
+        setText("BattleBox","Misfire occured; press continue");
         return;
       }
       var randomAlly = "A" + battlefield.activeAllies[randomNumber(0,battlefield.activeAllies.length-1)]; //theres only 2 allies for now
@@ -553,9 +462,9 @@ var enemies = {//following OOP structure here
     name: "Dummy",
     messages: ["I'm gonna stand still","i'm not dumb, trust", "uh oh"],
     xp: 9, //xp gained from defeat
-    rewards : {Gold: 10},//we can add an ITEM key for giving away items :>
-    action : { //use object.keys(enemies.Dummy)[i] and then you can simply index to get attack pattern
-      stand : function(target,side,self){ //this guy does nothing lol
+    rewards : {Gold: 10}, //I know I should've combined xp into rewards, but maybe I'll do that in a later repo upd
+    action : { 
+      stand : function(target,side,self){
         showElement("Button");
         setText("BattleBox", "The dummy chose to stand still... and burn you");
         utility.effect(target,"Burn",side,"debuffs");
@@ -565,7 +474,7 @@ var enemies = {//following OOP structure here
       }
     },
     logic : function(side, code){
-      var randomAlly = "A" + battlefield.activeAllies[randomNumber(0,battlefield.activeAllies.length-1)]; //theres only 2 allies for now
+      var randomAlly = "A" + battlefield.activeAllies[randomNumber(0,battlefield.activeAllies.length-1)];
       battlefield[side][code].action.stand(randomAlly,"allies","Enemy" + code.substring(code.length-1,code.length));
     }
   },
@@ -578,19 +487,19 @@ var enemies = {//following OOP structure here
     name: "Grass_man",
     messages : ["Grass noises"],
     xp: 2,
-    rewards : {Gold: 2},//we can add an ITEM key for giving away items :>
+    rewards : {Gold: 2},
     action:{
       slap: function(target,side,self){
         playSound("readyToDodge.mp3");
         showElement("Button");
         setText("BattleBox","Grass man warms up his hands...");
         startDodge([{time: 1500, dmg:3}]);
-        var ogPos = [getProperty(self,"x"),getProperty(self,"y")]; //[x,y]
-        globalTarget = target; //Use this for the dodges,
-        globalSide = side;//this is also needed here for dodges
+        var ogPos = [getProperty(self,"x"),getProperty(self,"y")]; 
+        globalTarget = target;
+        globalSide = side;
         var r1 = new TweenService.create(self,{x:120,y : getProperty("Ally"+target.substring(target.length-1,target.length),"y")},0.9,'Sine',"In",60);
         r1.play();
-        setTimeout(function(){//strike; add 450 ms offset
+        setTimeout(function(){//strike;
         playSound("sound://category_music/vibrant_fanfare_harp_sweep_positive.mp3");
           var r2 = new TweenService.create(self,{x : getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.45,'Sine',"In",60);
           r2.play();
@@ -607,25 +516,25 @@ var enemies = {//following OOP structure here
       }
     },
     logic: function(side,code) {
-      var randomAlly = "A" + battlefield.activeAllies[randomNumber(0,battlefield.activeAllies.length-1)]; //theres only 2 allies for now
+      var randomAlly = "A" + battlefield.activeAllies[randomNumber(0,battlefield.activeAllies.length-1)]; 
       var keys = []; 
       for (var x in battlefield[side][code].action) {keys.push(x)}
       battlefield[side][code].action[keys[randomNumber(0,keys.length-1)]](randomAlly, "allies","Enemy" + code.substring(code.length-1,code.length));
     }
   },
   
-  "Uranium_232":{//challenges spamming and quick reaction
+  "Uranium_232":{
     image:"Uranium232.gif",
     hp: 70,
     atk: 5,
-    def: -1,//negative defense means attacks get a bonus +1 dmg per hit
+    def: -1,//negative defense means attacks get a bonus +x dmg per hit
     name:"Uranium",
     messages:["Im gonna uranium you","I know ur id is: "+getUserId()],
     xp:120,
-    rewards : {Gold: 25},//we can add an ITEM key for giving away items :>
+    rewards : {Gold: 25},
     action:{
       Atomizer: function(target,side,self){//deal 8 dmg in 1 laser, (0.9 sec reaction)
-        globalTarget = target; //Use this for the dodges,
+        globalTarget = target;
         globalSide = side;
         instance.newLabel("AuraThing",getProperty("Ally"+target.substring(1,2),"x")-25,getProperty("Ally"+target.substring(1,2),"y")-25,100,100,rgb(188,107,48,0),"");
         setProperty("AuraThing","border-radius",100);
@@ -644,10 +553,6 @@ var enemies = {//following OOP structure here
         shake(self,5,500);
         showElement("Button");
       },
-      // ElectronCannon: function(target,side,self){//deal 25 dmg from 5 projectiles
-      //   console.log(self)
-      //   showElement("Button");
-      // }
     },
     logic:function(side,code){
       var randomAlly = "A" + battlefield.activeAllies[randomNumber(0,battlefield.activeAllies.length-1)]; //theres only 2 allies for now
@@ -664,11 +569,11 @@ var enemies = {//following OOP structure here
     name: "Tungsten Cube",
     messages: ["..."],
     xp: 100,
-    rewards : {Gold: 20},//we can add an ITEM key for giving away items :>
+    rewards : {Gold: 20},
     action: {
       roll : function(target,side,self){
         playSound("readyToDodge.mp3");
-        var ogPos = [getProperty(self,"x"),getProperty(self,"y")]; //[x,y]
+        var ogPos = [getProperty(self,"x"),getProperty(self,"y")];
         globalTarget = target;
         globalSide = side;
         startDodge([{time: 550,dmg: 20,dodgeArray : {"Perfect" : 100, "Great" : 200, "Okay" : 400}}]);
@@ -688,7 +593,7 @@ var enemies = {//following OOP structure here
       },
       jump : function (target,side,self){
         playSound("readyToDodge.mp3");
-        var ogPos = [getProperty(self,"x"),getProperty(self,"y")]; //[x,y]
+        var ogPos = [getProperty(self,"x"),getProperty(self,"y")];
         globalTarget = target;
         globalSide = side;
         setText("BattleBox","The tungsten cube looks ready for a double hit! It leaps into the air...");
@@ -699,12 +604,12 @@ var enemies = {//following OOP structure here
         tween1.play();
         var alphaShadow = 0;
         function tick(){
-          if (alphaShadow>=0.85) {return}
-          alphaShadow+=0.05;
+          if (alphaShadow >= 0.85) {return}
+          alphaShadow += 0.05;
           setTimeout(function(){
             setProperty("Battle_Shadow","background-color",rgb(0,0,0,alphaShadow));
             tick();
-          },45);
+          }, 45);
         }
         tick();
         setTimeout(function(){
@@ -712,21 +617,21 @@ var enemies = {//following OOP structure here
           setProperty(self,"x",getProperty("Ally"+target.substring(target.length-1,target.length),"x"));
           var tween2 = new TweenService.create(self, {y:getProperty("Ally"+target.substring(target.length-1,target.length),"y")},0.2,"Sine","In",60);
           tween2.play();
-        },800);
+        }, 800);
         setTimeout(function(){
           deleteElement("Battle_Shadow");
           var tween3 = new TweenService.create(self, {x:getProperty("Ally"+target.substring(target.length-1,target.length),"x")+120},0.2,"Sine","In",60);
           tween3.play();
-        },1000);
+        }, 1000);
         setTimeout(function(){//2nd Hit
           playSound("sound://category_explosion/playful_game_explosion_5.mp3");
           var tween4 = new TweenService.create(self, {x:getProperty("Ally"+target.substring(target.length-1,target.length),"x")},0.3,"Sine","In",60);
           tween4.play();
-        },1200);
+        }, 1200);
         setTimeout(function(){
           var tween5 = new TweenService.create(self, {x:ogPos[0]},0.6,"Sine","In",60);
           tween5.play();
-        },1510);
+        }, 1510);
       }
     },
     logic: function(side,code){
@@ -734,7 +639,6 @@ var enemies = {//following OOP structure here
       var keys = []; 
       for (var x in battlefield[side][code].action) {keys.push(x)}
       battlefield[side][code].action[keys[randomNumber(0,keys.length-1)]](randomAlly, "allies","Enemy" + code.substring(code.length-1,code.length));
-      // battlefield[side][code].action.jump(randomAlly, "allies","Enemy" + code.substring(code.length-1,code.length));
     }
   },
 }
@@ -749,27 +653,27 @@ stack and amp are the same BUT differ when seperate magntidues (not 1) are in pl
 this system does use VERY specific references, so specifically it'll check for x buff/debuff n stuff
 */
 
-var effects = { //status effect library, complex because of stacking
-  buffs : { //REQ {name,stack,dur,stat,amp} OPTIONAL: {max (cap on stacks),misc :seperate function for stacking}
+var effects = { 
+  buffs : { //REQ {name,stack,dur,stat,amp}     OPTIONAL: {max (cap on stacks),misc :seperate function for stacking}
     Charge: {name:"Charge",stack:1, dur:2,stat: "atk",amp: 1},
     DefUp: {name:"DefUp",stack:1, dur: 2,stat: "def",amp: 1},
     CrgDown: {name:"CrgDown",stack:1, dur: 1,stat: "crg",amp: -1, max: 1},
-    Ghostly: {name: "Ghostly", stack: 0,dur:2, stat: "nil", amp: Infinity,max:0}, //negates the need to dodge, auto dodges perfectly
+    Ghostly: {name: "Ghostly", stack: 0,dur:2, stat: "nil", amp: Infinity,max:0},
     SlowHeal: {name:"SlowHeal",stack:1, dur: 3,stat: "hp",amp: 5, max: 3},
   },
   debuffs : {
     Vulnerable : {name:"Vulnerable",stack:1, dur: 2,stat: "DHC",amp: 0.4, max: 2}, //affects the DoT hit chance
-    Burn: {name:"Burn",stack:1, dur: 3,stat: "hp",amp: -1, max:5}, //stronger than poison in most cases
+    Burn: {name:"Burn",stack:1, dur: 3,stat: "hp",amp: -1, max:5}, 
     Poison: {name:"Poison",stack:1, dur: 5,stat: "hp",amp: -1, max: 6, misc: function(statEffect){if (statEffect === 6){return "dmg-"+statEffect.stack*4+"~remove"}}},
     AtkDown: {name:"AtkDown",stack:1, dur: 2,stat: "atk",amp: -1},
     DefDown: {name:"DefDown",stack:1, dur:  2,stat: "def",amp: -1},
     Stun : {name:"Stun",stack:1, dur: 1,stat: "turn",amp: 1, max: 1},
-    Confusion : {name: "Confusion", stack:0, dur:1, stat: "target", amp: Infinity, max:0}, //this will cause random targetting and move (only affects the player tho unless user has an algorithm)
+    Confusion : {name: "Confusion", stack:0, dur:1, stat: "target", amp: Infinity, max:0},
     // Electricity: {name: "Shock", stack:1, dur:2, stat:"hp", amp:-1, max:3, misc: function(side){},} //aoe dmg
   },
 }
 
-var items = {//list of all possible items to aquire (heals, buffs, offensive stuff)
+var items = {
   coconut : {name: "coconut", snd: "Coconut.mp3", image: "Coconut.png", action: "heal", heal: 13, desc: "There's always time for a cocounut!\n heals for 13 hp",price:10},
   sugar_apple: {name: "sugar_apple", snd:"Sugar_Apple.mp3", image: "sugar_apple.png", action: "heal", heal: 28, desc:"A sweet treat to boost morale\n heals for 28 hp",price:35},
   orange: {name : "orange", snd :"Orange.mp3", image: "orange.png", action: "heal",heal : 5, desc: "an orange a day keeps the doctor away!\n heals for 5 hp",price:8},
@@ -786,8 +690,8 @@ var items = {//list of all possible items to aquire (heals, buffs, offensive stu
 }; 
 
 var moves = {
-  "sword-m1" : function(target, side,crgAsk) {//timing minigame
-    if (crgAsk) {return 0}//if the attack costs the CRG variable, subtract
+  "sword-m1" : function(target, side,crgAsk) {
+    if (crgAsk) {return 0}
     setText("BattleBox","Click when the cursor is in the green region!");
     instance.newLabel("swordbg",100,285,120,20,rgb(50, 51, 52),"");
     var Range = randomNumber(100,180);
@@ -795,44 +699,7 @@ var moves = {
     var shouldDecrease = false;
     instance.newLabel("swordArea",Range,285,40,20,rgb(167, 223, 112),"");
     instance.newLabel("swordTick",105,295,10,20,rgb(255, 156, 156),"");
-    function TICK(){//allows for the "scrolling" visual effect
-      if (shouldDecrease == null) {return}//stop ticking when there is no value left
-      if (swordX >= 215) {shouldDecrease = true} else if(swordX <= 95) {shouldDecrease = false}//moderates the direction of the scrolling
-      swordX = shouldDecrease == false && swordX + 5 || swordX -5;
-      setTimeout(function(){
-        setPosition("swordTick",swordX,295,10,20);
-        TICK();
-      },25);
-    }
-    TICK();
-    instance.newButton("Hit",getProperty("DodgeButton","x"),getProperty("DodgeButton","y"),getProperty("DodgeButton","width"),getProperty("DodgeButton","height"),'#4b7bac',"Attack");
-    onEvent("Hit","click",function(){
-      deleteElement("swordbg");
-      deleteElement("swordTick");
-      deleteElement("swordArea");
-      shouldDecrease = null; //make it null so the types change, and it stops the tick function
-        deleteElement("Hit");
-      showElement("Button");
-      //check if the tick is in the green area
-      playSound("sound://category_swing/swing_1.mp3");
-      if (swordX <= (Range+40) && swordX >= (Range-20)){//confirm hit with added generosity
-        utility.damage(target, player.atk + 1, side);//apply damage
-      } else {
-        utility.damage(target, 1, side);//apply damage
-      }
-    });
-  },
-  "sword-m2": function(target,side,crgAsk){
-    if (crgAsk){return 3} //ask how much crg is needed to execute
-    utility.take(playerSlot,3,"allies","crg");//we know they already have a sufficient amount
-    setText("BattleBox","Click when the cursor is in the green region!");
-    instance.newLabel("swordbg",100,285,120,20,rgb(50, 51, 52),"");
-    var Range = randomNumber(100,180);
-    var swordX = 105;
-    var shouldDecrease = false;
-    instance.newLabel("swordArea",Range,285,40,20,rgb(167, 223, 112),"");
-    instance.newLabel("swordTick",105,295,10,20,rgb(255, 156, 156),"");
-    function TICK(){//allows for the "scrolling" visual effect
+    function TICK(){
       if (shouldDecrease == null) {return}
       if (swordX >= 215) {shouldDecrease = true} else if(swordX <= 95) {shouldDecrease = false}//moderates the direction of the scrolling
       swordX = shouldDecrease == false && swordX + 5 || swordX -5;
@@ -847,31 +714,66 @@ var moves = {
       deleteElement("swordbg");
       deleteElement("swordTick");
       deleteElement("swordArea");
-      shouldDecrease = null; //make it null so the types change
+      shouldDecrease = null;
+        deleteElement("Hit");
+      showElement("Button");
+      playSound("sound://category_swing/swing_1.mp3");
+      if (swordX <= (Range+40) && swordX >= (Range-20)){//confirm hit with added generosity
+        utility.damage(target, player.atk + 1, side);
+      } else {
+        utility.damage(target, 1, side);
+      }
+    });
+  },
+  "sword-m2": function(target,side,crgAsk){
+    if (crgAsk){return 3} 
+    utility.take(playerSlot,3,"allies","crg");
+    setText("BattleBox","Click when the cursor is in the green region!");
+    instance.newLabel("swordbg",100,285,120,20,rgb(50, 51, 52),"");
+    var Range = randomNumber(100,180);
+    var swordX = 105;
+    var shouldDecrease = false;
+    instance.newLabel("swordArea",Range,285,40,20,rgb(167, 223, 112),"");
+    instance.newLabel("swordTick",105,295,10,20,rgb(255, 156, 156),"");
+    function TICK(){
+      if (shouldDecrease == null) {return}
+      if (swordX >= 215) {shouldDecrease = true} else if(swordX <= 95) {shouldDecrease = false}
+      swordX = shouldDecrease == false && swordX + 5 || swordX -5;
+      setTimeout(function(){
+        setPosition("swordTick",swordX,295,10,20);
+        TICK();
+      },25);
+    }
+    TICK();
+    instance.newButton("Hit",getProperty("DodgeButton","x"),getProperty("DodgeButton","y"),getProperty("DodgeButton","width"),getProperty("DodgeButton","height"),'#4b7bac',"Attack");
+    onEvent("Hit","click",function(){
+      deleteElement("swordbg");
+      deleteElement("swordTick");
+      deleteElement("swordArea");
+      shouldDecrease = null;
       deleteElement("Hit");
       showElement("Button");
-      //check if the tick is in the green area
       playSound("sound://category_swing/swing_1.mp3");
-      if (swordX <= (Range+40) && swordX >= (Range-20)){//confirm hit
-        utility.damage(target, player.atk+3, side);//apply damage
+      if (swordX <= (Range+40) && swordX >= (Range-20)){
+        utility.damage(target, player.atk+3, side);
       } else {
-        utility.damage(target, player.atk, side);//apply damage
+        utility.damage(target, player.atk, side);
       }
     });
   },
   "staff-m1" : function(target,side,crgAsk) { //use the same system as reg enemies, wait for proj to hit target
-    if (crgAsk) {return 0}//ask how much crg we need to execute it
+    if (crgAsk) {return 0}
     setText("BattleBox","Hold the 'hold' button to try and keep the bar within the green range! Do not let it hit the sides of the bar! After 5 seconds, you will start to lose control!");
     instance.newLabel("StaffBarBG",80,210,165,30,rgb(101,0,115,0.73),"");  
-    var zoneAreaX = 90+(randomNumber(0,95)); //add 50 to get the total zone area coverage
+    var zoneAreaX = 90+(randomNumber(0,95));
     instance.newLabel("zone",zoneAreaX,210,50,30,rgb(25,165,73),"");
     instance.newLabel("TickStaff",80,210,10,30,rgb(0,0,0),"");
     instance.newButton("Attack",getProperty("DodgeButton","x"),getProperty("DodgeButton","y"),getProperty("DodgeButton","width"),getProperty("DodgeButton","height"),'#9c3add',"Hold");
     var holding = false;
     var points = 0;
-    var currentX = 10;//give a an added weight of 10 because that's how wide the cursor is, and buffer for the start event
+    var currentX = 10;
     var started = false;
-    var startTime = getTime();//after 5 seconds, we will increase instability and make it harder, encouraging you to do it early
+    var startTime = getTime();
     onEvent("Attack","mousedown",function(){
       if (!started) {
         started = true;
@@ -902,7 +804,7 @@ var moves = {
         deleteElement("Attack");
         deleteElement("StaffBarBG");
         utility.damage(target, player.atk , side);
-        utility.effect(target,"Burn",side,"debuffs");//because this is so challenging, we reward a burn
+        utility.effect(target,"Burn",side,"debuffs");
         showElement("Button");
         return}
       if (holding){currentX+=14*stabilityMult} 
@@ -915,19 +817,19 @@ var moves = {
     tick();
   },
   "staff-m2" : function(target,side,crgAsk) { //For right now, this is just a copy!!!
-    if (crgAsk) {return 3}//ask how much crg we need to execute it
-    utility.take(playerSlot,3,"allies","crg");//we know they already have a sufficient amount
+    if (crgAsk) {return 3}
+    utility.take(playerSlot,3,"allies","crg");
     setText("BattleBox","Hold the 'hold' button to try and keep the bar within the green range! Do not let it hit the sides of the bar! After 4 seconds, you will start to lose control!");
     instance.newLabel("StaffBarBG",80,210,165,30,rgb(101,0,115,0.73),"");  
-    var zoneAreaX = 90+(randomNumber(0,95)); //add 50 to get the total zone area coverage
+    var zoneAreaX = 90+(randomNumber(0,95));
     instance.newLabel("zone",zoneAreaX,210,50,30,rgb(25,165,73),"");
     instance.newLabel("TickStaff",80,210,10,30,rgb(0,0,0),"");
     instance.newButton("Attack",getProperty("DodgeButton","x"),getProperty("DodgeButton","y"),getProperty("DodgeButton","width"),getProperty("DodgeButton","height"),'#9c3add',"Hold");
     var holding = false;
     var points = 0;
-    var currentX = 10;//give a an added weight of 10 because that's how wide the cursor is, and buffer for the start event
+    var currentX = 10;
     var started = false;
-    var startTime = getTime();//after 4 seconds, we will increase instability and make it harder, encouraging you to do it early
+    var startTime = getTime();
     onEvent("Attack","mousedown",function(){
       holding = true;
       started = true;
@@ -954,7 +856,7 @@ var moves = {
         deleteElement("Attack");
         deleteElement("StaffBarBG");
         utility.damage(target, player.atk+2 , side);
-        utility.effect(target,"Burn",side,"debuffs");//because this is so challenging, we reward a burn
+        utility.effect(target,"Burn",side,"debuffs");
         showElement("Button");
         return}
       if (holding && currentX + (20 *stabilityMult) < 155){currentX+=20*stabilityMult} else if (holding&&currentX + (20*stabilityMult) > 155){currentX=155}
@@ -967,13 +869,13 @@ var moves = {
     tick();
   },
   "bow-m1" : function(target,side,crgAsk) {//make them button mash to charge a meter, dealing 7 max (supposing def doesnt get in the way)
-    if (crgAsk) {return 0}//ask how much crg is needed for execution
+    if (crgAsk) {return 0}
     instance.newLabel("bowBg",100,285,120,20,rgb(50, 51, 52),"");
     instance.newLabel("bowBar",100,285,0,20,rgb(84, 206, 214),"");
     setText("BattleBox","Mash the \"mash\" button to capitalize off the bow!");
     var tickOverride = false;
-    var meter = 0;//the max value should be 120 because the meter is 120 pixels wide
-    var dmgReturn = 1;//return a base of 1, every 20 value gains 1 dmg up to a max of 7
+    var meter = 0;
+    var dmgReturn = 1;
     instance.newButton("Mash",getProperty("DodgeButton","x"),getProperty("DodgeButton","y"),getProperty("DodgeButton","width"),getProperty("DodgeButton","height"),'#4b7bac',"Mash!");
     function TICK(){
       if (tickOverride) {return}
@@ -991,17 +893,17 @@ var moves = {
       setPosition("bowBar",100,285,meter,20);
     });
     setTimeout(function(){
-      tickOverride = true;//prevents the game from, freaking out if the bar wasnt filled
+      tickOverride = true;
       deleteElement("Mash");
       deleteElement("bowBar");
       deleteElement("bowBg");
       var arrowsToShoot = player.atk - 3;
-      var totalDmg = 0;//the bow CAN do a ton of damage to enemies with -1 or lower defense, so we need to cap it
+      var totalDmg = 0;
       if (arrowsToShoot<1) {arrowsToShoot=1}
       setTimeout(function(){showElement("Button")},arrowsToShoot*100);
       for (var bowArrows=1;bowArrows<=Math.round(arrowsToShoot*(meter/120));bowArrows++){
         setTimeout(function(){
-          if (battlefield[side][target] && battlefield[side][target].hp.cur <= 0) {return} //prevent overkill, it causes the enemy to remove itself multiple times if it is alr dead
+          if (battlefield[side][target] && battlefield[side][target].hp.cur <= 0) {return} 
           if (randomNumber(1,2) == 2 &&  totalDmg <=15) {utility.damage(target, 1 , side),totalDmg+= 1 - battlefield[side][target].def.cur} else if (totalDmg <=15){utility.damage(target, 2 , side),totalDmg+=2- battlefield[side][target].def.cur}
           playSound("sound://category_hits/puzzle_game_button_04.mp3");
         },100*bowArrows);
@@ -1009,14 +911,14 @@ var moves = {
     },4000);
   },
   "bow-m2" : function(target,side,crgAsk) {//make them button mash to charge a meter, dealing 14 max (supposing def doesnt get in the way)
-    if (crgAsk) {return 3}//ask how much crg is needed for execution
-    utility.take(playerSlot,3,"allies","crg");//we know they already have a sufficient amount
+    if (crgAsk) {return 3}
+    utility.take(playerSlot,3,"allies","crg");
     instance.newLabel("bowBg",100,285,120,20,rgb(50, 51, 52),"");
     instance.newLabel("bowBar",100,285,0,20,rgb(84, 206, 214),"");
     setText("BattleBox","Mash the \"mash\" button to capitalize off the bow!");
     var tickOverride = false;
-    var meter = 0;//the max value should be 120 because the meter is 120 pixels wide
-    var dmgReturn = 1;//return a base of 1, every 20 value gains 1 dmg up to a max of 7
+    var meter = 0;
+    var dmgReturn = 1;
     instance.newButton("Mash",getProperty("DodgeButton","x"),getProperty("DodgeButton","y"),getProperty("DodgeButton","width"),getProperty("DodgeButton","height"),'#4b7bac',"Mash!");
     function TICK(){
       if (tickOverride) {return}
@@ -1034,7 +936,7 @@ var moves = {
       setPosition("bowBar",100,285,meter,20);
     });
       setTimeout(function(){
-      tickOverride = true;//prevents the game fro, freaking out if the bar wasnt filled
+      tickOverride = true;
       deleteElement("Mash");
       deleteElement("bowBar");
       deleteElement("bowBg");
@@ -1045,15 +947,15 @@ var moves = {
   "cannon-m1" : function(target,side,crgAsk) {//cranking-like minigame, slides the slider back n forth
     if (crgAsk) {return 0}
     instance.newImage("CannonPlayer",getProperty("Ally"+playerSlot.substring(1),"x")+20,getProperty("Ally"+playerSlot.substring(1),"y")-10,100,100,"cannon.png");
-    slider("named"); //terrible name, I know
+    slider("cannonSlider");
     setText("BattleBox","Move the slider back and forth 5 times to light the cannon!");//give the player directions
-    setPosition("named",85,285,150,30);//i dont have a custom creator function cuz sliders are rarely even used bruh
+    setPosition("cannonSlider",85,285,150,30);//i dont have a custom creator function cuz sliders are rarely even used bruh
     var shouldRev = false;
     var revolutions = 0;//complete 10 revolutions to complete the attack
-    onEvent("named","input",function(){ 
+    onEvent("cannonSlider","input",function(){ 
       if (revolutions >= 5){//divide by 2 to get the actual amount of complete revolutions
-        if (isNaN(getNumber("named"))) {return}
-        deleteElement("named");
+        if (isNaN(getNumber("cannonSlider"))) {return}
+        deleteElement("cannonSlider");
         showElement("Button");
         var TARGET = "Enemy"+(target.substring(1,2)).toString(); //use this to find the enemy obj
         instance.newLabel("Cannonball",getProperty("CannonPlayer","y"),getProperty("CannonPlayer","y")+15,20,20,rgb(0,0,0),"");
@@ -1075,28 +977,27 @@ var moves = {
         setTimeout(function(){deleteElement("CannonPlayer")},1500);
         return;
       }
-      if (getNumber("named") == 100 && !shouldRev) {//slider reversing conditions
+      if (getNumber("cannonSlider") == 100 && !shouldRev) {//slider reversing conditions
         shouldRev = true;
         revolutions++;
-      } else if (getNumber("named") == 0 && shouldRev) {
+      } else if (getNumber("cannonSlider") == 0 && shouldRev) {
         shouldRev = false;
         revolutions++;
       }
     });
   },
   "cannon-m2" : function(target,side,crgAsk) {//cranking-like minigame, slides the slider back n forth
-    if (crgAsk) {return 2}
-    utility.take(playerSlot,2,"allies","crg");//we know they already have a sufficient amount
+    if (crgAsk) {return 0}
     instance.newImage("CannonPlayer",getProperty("Ally"+playerSlot.substring(1),"x")+20,getProperty("Ally"+playerSlot.substring(1),"y")-10,100,100,"cannon.png");
-    slider("named"); //terrible name, I know
+    slider("cannonSlider");
     setText("BattleBox","Move the slider back and forth 5 times to light the cannon!");//give the player directions
-    setPosition("named",85,285,150,30);//i dont have a custom creator function cuz sliders are rarely even used bruh
+    setPosition("cannonSlider",85,285,150,30);//i dont have a custom creator function cuz sliders are rarely even used bruh
     var shouldRev = false;
     var revolutions = 0;//complete 10 revolutions to complete the attack
-    onEvent("named","input",function(){ 
+    onEvent("cannonSlider","input",function(){ 
       if (revolutions >= 5){//divide by 2 to get the actual amount of complete revolutions
-        if (isNaN(getNumber("named"))) {return}
-        deleteElement("named");
+        if (isNaN(getNumber("cannonSlider"))) {return}
+        deleteElement("cannonSlider");
         showElement("Button");
         var TARGET = "Enemy"+(target.substring(1,2)).toString(); //use this to find the enemy obj
         instance.newLabel("Cannonball",getProperty("CannonPlayer","y"),getProperty("CannonPlayer","y")+15,20,20,rgb(0,0,0),"");
@@ -1108,26 +1009,28 @@ var moves = {
           instance.newImage("ExplosionVFX",getProperty(TARGET,"x")-20,getProperty(TARGET,"y")-20,100,100,"low-quality-explosion.gif");
           setTimeout(function(){deleteElement("ExplosionVFX")},800);
           playSound("sound://category_alerts/vibrant_game_life_lost_1.mp3");
-          utility.damage("E"+ens, Math.round(player.atk/2) , side,true);
-          utility.effect(code,"DefDown",side,"debuffs");
+          for (var ens=1; ens<=3;ens++) {//attack all enemies
+            if (battlefield[side]["E"+ens] && battlefield[side]["E"+ens].hp.cur > 0){
+              utility.damage("E"+ens, Math.round(player.atk/2) , side,true);
+            }
+          }
           deleteElement("Cannonball");
         },100);
         setTimeout(function(){deleteElement("CannonPlayer")},1500);
         return;
       }
-      if (getNumber("named") == 100 && !shouldRev) {//slider reversing conditions
+      if (getNumber("cannonSlider") == 100 && !shouldRev) {//slider reversing conditions
         shouldRev = true;
         revolutions++;
-      } else if (getNumber("named") == 0 && shouldRev) {
+      } else if (getNumber("cannonSlider") == 0 && shouldRev) {
         shouldRev = false;
         revolutions++;
       }
     });
-  }
+  },
 };
 
 function shake(id, magnitude, times, decay) {// Advised magnitude: 10 or lower, TIME IS IN MILISECONDS
-  // if (activeShakes[id] && activeShakes[id] === true) {return}
   var originalX = getProperty(id,"x");
   var originalY = getProperty(id,"y");
   var ti = 0;
@@ -1135,20 +1038,20 @@ function shake(id, magnitude, times, decay) {// Advised magnitude: 10 or lower, 
   
   var t = timedLoop(5, function() {
     if (ti >= times || mag <= 0.1) {
-      stopTimedLoop(t); //ensure it doesn't stop all other loops
+      stopTimedLoop(t); 
       setPosition(id,originalX,originalY,getProperty(id,"width"),getProperty(id,"height"));
     } else {
       ti += 5;
       setPosition(id,originalX + randomNumber(-mag,mag),originalY + randomNumber(-mag,mag), getProperty(id,"width"),getProperty(id,"height"));
-      if (decay && mag > 0.04) {mag *= 0.98} //2% decay
+      if (decay && mag > 0.04) {mag *= 0.98}
     }
   });
 }
 
 //Animation index: {Name : Originalpos(x,y)}
 var cacheAnims = {};
-//the direction takes x or y (and you can make -x and -y as well)
-function bounce(id, direction) { //creates a simple elastic animation
+
+function bounce(id, direction) {
   var origins = {"x" : getProperty(id,"x"), "y" : getProperty(id,"y")};
   if (cacheAnims[id]) {origins.x = cacheAnims[id][0],origins.y = cacheAnims[id][1]} else {cacheAnims[id] = [origins.x,origins.y]}
   var inverse = false;
@@ -1167,13 +1070,12 @@ function bounce(id, direction) { //creates a simple elastic animation
 function gradientTransform(startColor, endColor, objectId, duration) {
   var startTime = getTime();
   var intervalId;
-  //if starcolor isnt supplied, find the object's current color
   if (!startColor) {
     var baseColor = stripRGBValues(getProperty(objectId,"background-color"));
     startColor = {red:baseColor.red,blue:baseColor.blue,green:baseColor.green};
   }
   
-  this.play = function(modifiedDuration) {//you do not need to call this.play, it already does it upon creation
+  this.play = function(modifiedDuration) { //you do not need to call this.play, it already does it upon creation
     if (modifiedDuration!=null){duration = modifiedDuration}
     intervalId = setInterval(function() {
       var time = (getTime() - startTime) / duration;
@@ -1211,25 +1113,22 @@ function gradientTransform(startColor, endColor, objectId, duration) {
   };
 }
 
-var g = new gradientTransform({red:255,green:20,blue:65},{red:0,green:26,blue:255},"spinButton",500);
-setTimeout(function(){g.inversePlay(2000)},800);
-setTimeout(function(){var n = new gradientTransform({red:255,green:20,blue:65},{red:26,green:188,blue:61},"spinButton",600)},2800);
-var tim = new gradientTransform(null,{red:0,green:120,blue:2},"b",1500)
+//example use cases of gradient transform
+// var g = new gradientTransform( {red:255,green:20,blue:65},{red:0,green:26,blue:255} , "spinButton" , 500);
+// setTimeout(function(){g.inversePlay(2000)},800);
+// setTimeout(function(){var n = new gradientTransform({red:255,green:20,blue:65},{red:26,green:188,blue:61},"spinButton",600)},2800);
 
 var activeNumberTweens = [];
 var intervalIndex = 0;
 
 function numberTween(startValue, endValue, duration,parent, text, onUpdate, onComplete) {
-  // Stop any existing tween with same ID/text
   if (activeNumberTweens[text]) {
     clearInterval(activeNumberTweens[text].interval);
     delete activeNumberTweens[text];
-    // console.log('Stopped previous tween for '+text);
   }
 
   var startTime = Date.now();
 
-  // Create a new tween object
   var tween = {
     parent : parent,
     text: text,
@@ -1246,7 +1145,6 @@ function numberTween(startValue, endValue, duration,parent, text, onUpdate, onCo
     var t = (Date.now() - startTime) / duration;
     if (t > 1) t = 1;
 
-    // exponential ease-out
     var eased = 1 - Math.pow(2, -10 * t);
     var value = startValue + (endValue - startValue) * eased;
     onUpdate(value);
@@ -1260,13 +1158,12 @@ function numberTween(startValue, endValue, duration,parent, text, onUpdate, onCo
     }
   }, 30);
 
-  // store active tween
   activeNumberTweens[text] = tween;
 
-  return tween; // allows for manual stopping
+  return tween;
 }
 
-var objectz = {//where all of these tweens are stored
+var objectz = {
   nt : {name: "nt",text:"scoreLabel",intervalInst : 0,func : new numberTween(100, 50, 2000,"nt","scoreLabel", function(val) {//tweening a number to 50 in 2 seconds
     setText("scoreLabel", Math.floor(val));
   })},
@@ -1280,45 +1177,42 @@ var objectz = {//where all of these tweens are stored
 function createConnection(obj, key) { //the key has to come from the obj, the key is one of the obj's values
   if (obj["bind_"+key]) {return true} //use this to check the existence
   var internal = obj[key]; //Name of the object you want to modify
-  //the listeners are stored INSIDE of the obj!
-  var listeners = []; //all functions binded to this object are stored here
+
+  var listeners = [];
   
-  Object.defineProperty(obj, key, {//alows for custom properties if you dont know
-    get: function() {return internal},//this trggers the moment a value is changed
+  Object.defineProperty(obj, key, {
+    get: function() {return internal},
     
-    set: function(value){ //incoming represents the incoming value used to change it
+    set: function(value){ 
       var incoming = Math.abs(internal - value)
       internal = value;
       listeners.forEach(function(callback) {callback(value,incoming)});
     }
   });
   
-  if (!obj.statListeners) obj.statListeners = {}; //create listener instance
+  if (!obj.statListeners) obj.statListeners = {}; 
   
   obj.statListeners[key] = listeners;
   
-  //binds will be created with custom names to keep track!
-  
   obj["bind_"+key] = function(callback) {listeners.push(callback)};
-  //you must call the right object or it can't be found
   obj["unbind_"+key] = function(callback) {
     var index = listeners.indexOf(callback);
-    if (index !== 1) { //remove it from listeners
+    if (index !== 1) { 
       listeners.splice(index,1);
     }
   };
 }
 
-function saveGame(){//VERY IMPORTANT FUNCTION; THIS IS WHY THE DATA STORAGE EVEN EXISTS
+function saveGame(){
   //playerData already has the usernamePassword, dont do a search for it here
-  var savedIntD = "";//internal Data
+  var savedInternalData = "";
   var savedInventory = "";
   var savedCurrency = "";
   var savedStory = "";
   var savedEnchants = "";
   for (var data1 in internalData){
-    savedIntD += internalData[data1];
-    if (data1 != internalData.length-1){savedIntD+="/"}
+    savedInternalData += internalData[data1];
+    if (data1 != internalData.length-1){savedInternalData+="/"}
   }
   for (var data2 in Inventory){
     savedInventory += Inventory[data2];
@@ -1341,7 +1235,7 @@ function saveGame(){//VERY IMPORTANT FUNCTION; THIS IS WHY THE DATA STORAGE EVEN
   updateRecord("Users",{
     id:playerData.id,
     UsernamePassword: playerData.UsernamePassword,
-    InternalData: savedIntD,
+    InternalData: savedInternalData,
     Currency:savedCurrency,
     XP: playerData.Xp,
     Inventory: savedInventory,
@@ -1349,7 +1243,7 @@ function saveGame(){//VERY IMPORTANT FUNCTION; THIS IS WHY THE DATA STORAGE EVEN
     EnchantData : savedEnchants,
   },function(){
     console.log("Saved!");
-    playerData.internalData = savedIntD;//update playerData so if the player dies, we can revert data
+    playerData.internalData = savedInternalData;
     playerData.Currency = savedCurrency;
     player.Inventory = savedInventory;
     playerData.saveData = savedStory;
@@ -1359,16 +1253,15 @@ function saveGame(){//VERY IMPORTANT FUNCTION; THIS IS WHY THE DATA STORAGE EVEN
 onEvent("Location","click",function(){setScreen("Lobby")});
 onEvent("gameSave","click",function(){playSpeech("Saving game","male","English (UK)"),saveGame()});
 
-function decodeData(Data,quantity) { //this acts as a master decoder
+function decodeData(Data,quantity) { 
   console.log("recieved data:");
   console.log(Data);
   var dataPieces = Data.split("/");
-  //more in-depth decoding
   if (quantity) {
     var finalReturn = [];
     for (var i in dataPieces) {
       var value = dataPieces[i].split("~");
-      if (value[1]==undefined){finalReturn.push(value[0]);//this allows for hybrid decoding!
+      if (value[1]==undefined){finalReturn.push(value[0]);
       continue}
       finalReturn.push([value[0],value[1]]);
     }
@@ -1379,11 +1272,11 @@ function decodeData(Data,quantity) { //this acts as a master decoder
 //COMBAT MECHANICS ------------------/////////////////////////--------------------------------
 
 var globalTarget; //for the utility function; updated alongside utility.Damage
-var globalSide; //both of these must be updated so the game knows who to hit
+var globalSide; //both of these must be updated so the game knows who to target
 
-var dodgeQueue = []; //to allow multiple dodge events to trigger at once
-var MaxTime = 0;// to offset despawn timer
-var globalNow = null; //the global start time for all the dodges
+var dodgeQueue = [];
+var attackDespawnOffset = 0;// to offset despawn timer
+var globalNow = null;
 var dodgeIndex = 0;
 
 function dodgeLabel(dodgeType){
@@ -1395,39 +1288,38 @@ function dodgeLabel(dodgeType){
 }
 
 
-function queueDodge(targetTime,expectedDamage, dodgeArray) { //queueing the dodge event
-  var startTime;   //target time is in MILISECONDS
+function queueDodge(targetTime,expectedDamage, dodgeArray) { 
+  var startTime;   
   if (dodgeQueue.length > 0) {
-    startTime = dodgeQueue[0].TargetTime; //we want the dodges to be independent, so ex: 2000 + 2000 (they won't overlap)
+    startTime = dodgeQueue[0].TargetTime; 
   } else {startTime = globalNow}
-  var trialTime = startTime + targetTime; //in miliseconds, calculates the target dodge window
+  var trialTime = startTime + targetTime; 
   
-  //the dodge array allows for custom timing and dmg dampening, if null, default times will be used
   dodgeQueue.push({TargetTime : trialTime, dmg : expectedDamage,dodged : false, dodgeArray : dodgeArray});
   
-  setTimeout(function(){ //automatically remove so that the dodgeQueue is actively updating
-    if (dodgeQueue.length  === 1) { //reset the dodge queue
-      if (dodgeQueue[0].dodged == false) { //if the player presses no buttons, punish them
+  setTimeout(function(){ 
+    if (dodgeQueue.length  === 1) { 
+      if (dodgeQueue[0].dodged == false) { 
         dodgeLabel("Miss");
       }
       utility.damage(globalTarget,dodgeQueue[0].dmg, globalSide);
-      dodgeQueue = []; //this should be empty but set it to [] in case.
-      MaxTime = 0; //reset depsawn timer
+      dodgeQueue = []; 
+      attackDespawnOffset = 0;
       hideElement("DodgeButton");
       showElement("Button");
     } else {
-      if (dodgeQueue[0].dodged == false) { //if the player doesn't dodge, punish them
+      if (dodgeQueue[0].dodged == false) { 
         dodgeLabel("Miss");
       }
       utility.damage(globalTarget,dodgeQueue[0].dmg, globalSide);
-      dodgeQueue.shift(); //this pushes the first index out and moves the rest up
+      dodgeQueue.shift(); 
     }
-  },targetTime + MaxTime); //we add by the max time as well to properly offset the deletion
-  MaxTime += targetTime;//add offset time if there is another attack
+  },targetTime + attackDespawnOffset); 
+  attackDespawnOffset += targetTime;
 }
 
 function dodge(){
-  if (dodgeQueue.length == 0 || dodgeQueue[0].dodged === true) {return} //we don't need it to do anything then
+  if (dodgeQueue.length == 0 || dodgeQueue[0].dodged === true) {return} 
   var timePressed = getTime();
   var targetTime = dodgeQueue[0].TargetTime;
   var offset = (targetTime - timePressed);
@@ -1448,7 +1340,7 @@ function dodge(){
     dmgReturn = Math.round(dodgeQueue[0].dmg * 0.75);
     dodgeQueue[0].dodged = true;
     dodgeLabel("Okay");
-  } else { //miss, allow them to retry dodging though
+  } else {
     dodgeLabel("Miss");
     playSound("OO_Miss.mp3");
     return;
@@ -1458,19 +1350,19 @@ function dodge(){
 
 onEvent("DodgeButton","click",function(){dodge()});
 onEvent("Battle","keypress",function(input){if (getProperty("DodgeButton","hidden") === false && input.charCode===32) {dodge()}});
-function startDodge(dodgeList){ //getting ready to dodge
+function startDodge(dodgeList){ 
   showElement("DodgeButton");
-  globalNow = getTime();//gets the current time in MILISECONDS
-  for (var d in dodgeList) {//queue all attacks
+  globalNow = getTime();
+  for (var d in dodgeList) {
     queueDodge(dodgeList[d].time,dodgeList[d].dmg, dodgeList[d].dodgeArray);
   }
 }
 
 //BATTLEFIELD SYSTEM -------------------//////////////////////------------------------------/////////////////
-var act = null;//the name of the action
+var act = null; //the name of the action
 var actPressed = false; //prevent the action menu from being spammed
 
-onEvent("Pass","click",function(){//basically a do nothing action
+onEvent("Pass","click",function(){
   utility.grant(playerSlot,1,"allies","crg");
   setText("BattleBox","You decided to rest and gain back 1 crg!");
   showElement("Button");
@@ -1495,9 +1387,9 @@ function showActionMenu(){
   hideElement("Item");
   hideElement("Action");
   hideElement("Pass");
-  var y_o = 1; //helps offset items accordingly
+  var y_o = 1; 
   
-  var elementList =["BattleBorder_TEMP","BackT1"]; //easy deletion
+  var elementList = ["BattleBorder_TEMP","BackT1"]; 
   
   instance.newButton("BackT1",65,70,100,30,rgb(2,2,2),"Back");
   onEvent("BackT1","click",function(){
@@ -1516,17 +1408,17 @@ function showActionMenu(){
     elementList.push("PLAYER_ICON_"+moves);
     instance.newLabel("PLAYER_"+moves,110,115+((y_o-1)*40),140,35,rgb(205, 155, 90),moves,rgb(255,255,255));
     if (player.actions[moves](null,null,true)>0){setText("PLAYER_"+moves,moves+" | "+player.actions[moves](null,null,true)+" CRG")}
-    elementList.push("PLAYER_"+moves); //set it up so the ui can be destroyed when triggered
+    elementList.push("PLAYER_"+moves); 
     y_o++;
-    function bind(m) {
-      onEvent("PLAYER_"+m,"click",function(){ //also make them select a target before you invoke the func
-        if (player.actions[m](null,null,true) > battlefield.allies[playerSlot].crg.cur) {
-          setText("BattleBox","This action requires "+player.actions[m](null,null,true)+ " CRG and you have "+battlefield.allies[playerSlot].crg.cur);
+    function bind(actionElement) {
+      onEvent("PLAYER_"+actionElement,"click",function(){ 
+        if (player.actions[actionElement](null,null,true) > battlefield.allies[playerSlot].crg.cur) {
+          setText("BattleBox","This action requires "+player.actions[actionElement](null,null,true)+ " CRG and you have "+battlefield.allies[playerSlot].crg.cur);
           playSound("OO_Miss.mp3");
           return;
         }
         playSound("Select.mp3");
-        for (var e in elementList) {deleteElement(elementList[e])}
+        for (var e in elementList) { deleteElement(elementList[e]) }
         setupTargetSelector();
         showElement("TargetSelector");
         instance.newButton("BackT2",65,70,100,30,rgb(240,2,2),"Back");
@@ -1538,10 +1430,10 @@ function showActionMenu(){
           act = null;
           showActionMenu();
         });
-        act = m;//set to the name of the action 
+        act = actionElement;
       });
     }
-    bind(moves);//nest it in a function so it won't overlap itself
+    bind(moves);
   }
 }
 
@@ -1551,7 +1443,7 @@ onEvent("TargetSelector","change",function(){ //this is where the attack functio
   hideElement("Item");
   hideElement("Pass");
   if (getText("TargetSelector") == "None") {return}
-  player.actions[act](getText("TargetSelector").substring(0,2),'enemies'); //grab who the plr is targetting before u use this bro
+  player.actions[act](getText("TargetSelector").substring(0,2),'enemies'); 
   hideElement("TargetSelector");
   deleteElement("BackT2");
   actPressed = false;
@@ -1559,17 +1451,17 @@ onEvent("TargetSelector","change",function(){ //this is where the attack functio
 
 onEvent("Action","click",function(){showActionMenu(),playSound("Small_Click.mp3")});
 
-var inventoryObjects = [];//queue for deletion
-var itemIndexBattle = 0;//items can have duplicates in an inventory
-function updateInventory(){ //SHOW ITEMS IN A BATTLE
+var inventoryObjects = [];
+var itemIndexBattle = 0;
+function updateInventory(){ 
   var x_o = 0;
   var y_o = 0;
   for (var item in Inventory) {
     var foundItem = Inventory[item] || null;
-    image(item+"_BatInv"+itemIndexBattle,items[foundItem].image || "Nil.png");//find it plsss 
+    image(item+"_BatInv"+itemIndexBattle,items[foundItem].image || "Nil.png");
     setPosition(item+"_BatInv"+itemIndexBattle,10+(x_o*60),115+(y_o*60),50,50);
     inventoryObjects.push(item+"_BatInv"+itemIndexBattle);
-    function bind(name,what){//when healing, look at the master item repository
+    function bind(name,what){
       onEvent(name,"click",function(){
         playSound(items[what].snd||"Placeholder.mp3");
         if (getProperty("Use","width")){deleteElement("Use"),inventoryObjects.splice(inventoryObjects.indexOf("Use"),1)}
@@ -1583,15 +1475,14 @@ function updateInventory(){ //SHOW ITEMS IN A BATTLE
           inventoryObjects = [];
           Inventory.splice(Inventory.indexOf(what),1);
           if (battlefield.activeAllies.length>1){
-            //make them pick who to heal
-            dropdown("HealPicker","None","A1","A2");//i will die trying to change this if there is ever >2 allies lol
+            dropdown("HealPicker","None","A1","A2"); //I am aware of modularity issues that come from this, but this build of BG won't need any change to ally system
             setPosition("HealPicker",60,130,200,30);
             onEvent("HealPicker","change",function(){
               utility.heal(getText("HealPicker"),items[what].heal || 0,"allies");
               deleteElement("HealPicker");
               showElement("Button");
             });
-           } else {//let the player auto heal themselves if it's just them alive or in general
+           } else {
              utility.heal("A1",items[what].heal || 0,"allies");
              showElement("Button");
            }
@@ -1631,7 +1522,7 @@ onEvent("Item","click",function(){
 onEvent("DeathContinue","click",function(){loadPlayerData()});
 
 function endBattle(win){
-  console.clear();//clear the console because there may be a lot of warnings that appear during battle
+  console.clear();
   externalDiaIndex=0;
   stopSound(curSong);
   setText("BattleBox","");
@@ -1658,11 +1549,11 @@ function endBattle(win){
       if (battlefield.enemies.E3) {xpYield += battlefield.enemies.E3.xp}
       mes += xpYield+" xp gained!\n "+goldGained+" Gold earned!";
       playerData.Xp += xpYield;
-      updatePlayerData("lvl");
+      updatePlayerLevels();
       if (level != prevLevel){
         mes+= ("You also leveled up!: | "+prevLevel+" -> "+level);
       }
-      stopSound(); //STOPS EVERYTHING, also simplifies the need to find the battle theme
+      stopSound(); 
       playSound("OO_Victory.mp3");
       setText("BattleBox",mes);
       setTimeout(function(){
@@ -1684,7 +1575,7 @@ function endBattle(win){
       var time = 250;
       function tickD(){
         if (time <=0){return}
-        setProperty("BgC","background-color",!invert && rgb(255,255,255) || rgb(0,0,0));
+        setProperty("BgC","background-color", !invert && rgb(255,255,255) || rgb(0,0,0));
         time -=50;
         invert = !invert;
         setTimeout(function(){tickD()},50);
@@ -1698,10 +1589,9 @@ function endBattle(win){
       },250);
       
       curSong = "OO_Searchlights.mp3";
-      //load save data and reset as many things as we can (not done yet)
   }
   
-  battlefield = { //reset to the inital state; also clears binds
+  battlefield = {
     "allies" : {
       A1 : null,
       A2 : null,
@@ -1711,10 +1601,8 @@ function endBattle(win){
       E2 : null,
       E3 : null
     },
-    //the variables below help the algorithms figure out who is alive and who to hit
-    activeAllies : [], //these aren't used by the player but are used by the ally and enemies
-    activeEnemies : [], //used by the ally to not accidently hit a dead enemy
-    
+    activeAllies : [], 
+    activeEnemies : [], 
   };
 }
 
@@ -1723,20 +1611,19 @@ function activeFailsafe(){ //active entities list gets messed up from lag spikes
   battlefield.activeEnemies = [];
   for (var ai =1;ai<=2;ai++){
     if (battlefield.allies["A"+ai] && battlefield.allies["A"+ai].hp.cur>0){
-      battlefield.activeAllies.push(ai);//dont mind why its different compared to enemies soo
+      battlefield.activeAllies.push(ai);
     }
   }
   for (var ei = 1; ei<=3;ei++){
     if (battlefield.enemies["E"+ei] && battlefield.enemies["E"+ei].hp.cur>0){
-      battlefield.activeEnemies.push("E"+ei);//dont mind why its different compared to allies soo
+      battlefield.activeEnemies.push("E"+ei);
     }
   }
 }
 
-var turnOrder = [];// the player should ALWAYS be first!
+var turnOrder = [];
 var turnIndex = 0;
-function cycle() {//battle continuation; most of the battle logic happens here
-  //we want battles to go on until one side has everybody hits 0 hp or unless overrided
+function cycle() {
   hideElement("Button");
   
   //sometimes, the game can lag and we have items not in the right place; fix that
@@ -1744,22 +1631,19 @@ function cycle() {//battle continuation; most of the battle logic happens here
   setPosition("Enemy2",265,195,50,50);
   setPosition("Enemy3",265,265,50,50);
   
-  var skipThem = false;//this variable determines what triggers on what enemy
+  var skipThem = false;
   
-  //grant turns here; we want to check if we need to quickly skip past them
-  if (battlefield[turnOrder[turnIndex][0]][turnOrder[turnIndex][1]].hp.cur > 0){ //should have their turn when alive
+  if (battlefield[turnOrder[turnIndex][0]][turnOrder[turnIndex][1]].hp.cur > 0){ 
     skipThem = false;
   } else {skipThem = true}
   
-  //check ally hp
-  var allyFlag = []; //at the end, check if all allies have 0 hp, yes in clutches, you may lose first
-  var enemyFlag = []; //at the end, check if all enemies have 0 hp
+  var allyFlag = [];
+  var enemyFlag = []; 
   
-  //run buffs and debuffs first as they have highest priority (run their effect they do)
   for (var ally in battlefield.allies) {
     if (battlefield.allies[ally]==undefined){continue}
-    if (battlefield.allies[ally].hp.cur <= 0 || skipThem == true) {break} //not the best practice, but this shouldn't loop.
-    battlefield.allies[ally].atk.cur = battlefield.allies[ally].atk.max;//reset these values to their max so we can properly apply stat based debuffs
+    if (battlefield.allies[ally].hp.cur <= 0 || skipThem == true) {break} 
+    battlefield.allies[ally].atk.cur = battlefield.allies[ally].atk.max;
     battlefield.allies[ally].def.cur = battlefield.allies[ally].def.max;
     
     if (battlefield.allies[ally].buffs){
@@ -1810,7 +1694,7 @@ function cycle() {//battle continuation; most of the battle logic happens here
   }
   for (var enemy in battlefield.enemies) {
     if (battlefield.enemies[enemy]==undefined){continue}
-    if (battlefield.enemies[enemy].hp.cur <= 0 || skipThem == true) {break} //not the best practice, but this shouldn't loop to save power
+    if (battlefield.enemies[enemy].hp.cur <= 0 || skipThem == true) {break} 
     if (battlefield.enemies[enemy].debuffs){
       for (var dbuff in battlefield.enemies[enemy].debuffs) {
         if (battlefield.enemies[enemy].debuffs[dbuff].dur === 0) {
@@ -1824,16 +1708,16 @@ function cycle() {//battle continuation; most of the battle logic happens here
           continue}
         battlefield.enemies[enemy].debuffs[dbuff].dur -= 1;
         setText(dbuff+battlefield.enemies[enemy].debuffs[dbuff].index+"_dur",battlefield.enemies[enemy].debuffs[dbuff].dur);
-        if (battlefield.enemies[enemy].debuffs[dbuff].stat === "hp") { //probably means it'll do dmg
+        if (battlefield.enemies[enemy].debuffs[dbuff].stat === "hp") { 
           utility.damage(enemy,-battlefield.enemies[enemy].debuffs[dbuff].amp * battlefield.enemies[enemy].debuffs[dbuff].stack ,"enemies",true);
-        } else if(battlefield.enemies[enemy].debuffs[dbuff].stat === "turn") {//stun
+        } else if(battlefield.enemies[enemy].debuffs[dbuff].stat === "turn") {
           skipThem = true;
         }
       }
     }
   }
   
-  for (var ally in battlefield.allies) {//check ally hp
+  for (var ally in battlefield.allies) {
     if (battlefield.allies[ally] && battlefield.allies[ally].hp.cur == 0 ){
       allyFlag.push(0);
     } else {
@@ -1841,34 +1725,30 @@ function cycle() {//battle continuation; most of the battle logic happens here
       allyFlag.push(1);
     }
   }
-  //check enemy hp
   for (var enemy in battlefield.enemies) {
     if (battlefield.enemies[enemy] && battlefield.enemies[enemy].hp.cur <= 0 ){enemyFlag.push(0);} else {
       if (!battlefield.enemies[enemy]) {continue}
-      enemyFlag.push(1); //basically mark them as not dead
+      enemyFlag.push(1);
     }
   }
-  //Battle end conditions
   if (allyFlag.every(function(hp){return hp ===0})){
     endBattle(false);
     return;
-  } //mark as a defeat
+  }
   if (enemyFlag.every(function(hp){return hp ===0})){
     endBattle(true);
     return;
-  }//mark as a victory
+  }
  if (skipThem == false) {
-    // console.log("This entity is going: "+battlefield[turnOrder[turnIndex][0]][turnOrder[turnIndex][1]].name);
     battlefield[turnOrder[turnIndex][0]][turnOrder[turnIndex][1]].logic(turnOrder[turnIndex][0],turnOrder[turnIndex][1]);
  } 
  
   if (turnIndex + 1 > turnOrder.length - 1) {turnIndex = 0} else {turnIndex++}
-  if (skipThem) {cycle()}  //we skipped the dead person, this also prevents debuffs from hyper triggering
+  if (skipThem) {cycle()} 
 }
 
-onEvent("Button","click",function(){cycle(),playSound("Small_Click.mp3");}); //async way of triggering next turn
+onEvent("Button","click",function(){cycle(),playSound("Small_Click.mp3");}); 
 
-//this manages "speech bubbles"
 function speech(side, who) {
   textLabel("Message_"+who ,battlefield[side][who].messages[randomNumber(0,battlefield[side][who].messages.length-1)]);
   setProperty("Message_"+who,"text-align",side === "allies" && "left" || "right");
@@ -1877,8 +1757,8 @@ function speech(side, who) {
   setProperty("Message_"+who,"border-width",1);
   setTimeout(function(){deleteElement("Message_"+who)},5000);
 }
-function startBattle(enemies,setTeam,sndTrack) {//allow preset teams
-  hideElement("Enemy2");//reset UI
+function startBattle(enemies,setTeam,sndTrack) {
+  hideElement("Enemy2");
   hideElement("Enemy3");
   hideElement("Enemy2HPLabel");
   hideElement("Enemy2HPBar");
@@ -1892,82 +1772,75 @@ function startBattle(enemies,setTeam,sndTrack) {//allow preset teams
   setProperty("Ally2HP","background-color",rgb(0,255,0));
   
   stopSound(curSong);
-  var songBank = ["Alias.mp3","OO_Witches_Brew.mp3","tale_4.mp3"];//TEMPORARY, tale_4 is going to be the norm, make it so custom music can play
+  var songBank = ["Alias.mp3","OO_Witches_Brew.mp3","tale_4.mp3"];//music according to the BG should play but I didn't have enough time
   curSong = sndTrack || songBank[randomNumber(0,songBank.length-1)];
   curSong = "OO_Witches_Brew.mp3";
-  playSound(curSong,true); //WILL HAVE CUSTOMIZED TRACKS LATER
+  playSound(curSong,true); 
 
   var t2 = new TweenService.create("Bat_Transition", {y : -450},0.8,'Sine','In',60);
   t2.play();
   if (!enemies) {Error("WARNING: INVALID ENEMY DATA RECIEVED")}
-  //reset the battlefield state here; though it should auto replace without any error
   
-  var ti = 1; //team index
-  var ei = 1; //enemy index
+  var teamIndex = 1; 
+  var enemyIndex = 1; 
   
   setScreen("Battle");
   
-  if (setTeam) { //preset teams can be given from story
-    for (var member in setTeam) {
-      setImageURL("Enemy"+ei,setTeam[member].image || "Nil.png");
-      battlefield.allies["A"+ti.toString()] = {
-        hp : {cur : setTeam[member].hp, max : setTeam[member].hp}, //the reason for the repeat is the current and max values
-        atk : {cur: setTeam[member].atk,max:setTeam[member].atk},
-        def : {cur: setTeam[member].def, max: setTeam[member].def},
-        crg: {cur: setTeam[member].crg || 0, max: setTeam[member].crg || 0},
-        buffs : {},
-        debuffs :{}, //kicks in at the start of your turn
-        action : setTeam[member].action,
-        logic : setTeam[member].logic,
-        messages : setTeam[member].messages,
-        name : setTeam[member].Name,
-        self : "A"+ti, //used to refer to itself when charging CRG during an attack
-      };
-      function addBind(v){//v is the ally index (ex: A1,A2)
-        createConnection(battlefield.allies["A"+v].hp,'cur');
-        battlefield.allies["A"+v].hp.bind_cur(function(){
-            if (battlefield.allies["A"+v].hp.cur===0) {
-              // //loop through all buffs and debuffs to clean up leftover visuals
-              // for (var buff in battlefield.allies["A"+v].buffs){deleteElement(buff+battlefield.allies["A"+v].buffs[buff].index)}
-              // for (var debuff in battlefield.allies["A"+v].debuffs){deleteElement(debuff+battlefield.allies["A"+v].debuffs[debuff].index)}
-              battlefield.activeAllies.splice(battlefield.activeAllies.indexOf(v),1);
-              activeFailsafe();//the death call can get retriggered for absolutely no reason
-            }
-            objectz["nt"+intervalIndex] = numberTween(Number(getText("Ally"+v+"HP").split("/")[0]), battlefield.allies["A"+v].hp.cur, 5000,"nt"+intervalIndex,"Ally"+v+"HP", function(val) {//tweening a number to 50 in 2 seconds
-              setText("Ally"+v+"HP", Math.floor(val)+"/"+getText("Ally"+v+"HP").split("/")[1]);
-            },function(){delete objectz["nt"+intervalIndex]});
-            var ratio = battlefield.allies["A"+v].hp.cur / battlefield.allies["A"+v].hp.max;
-            var gradientShift = new gradientTransform(
-              null,
-              {red:Math.floor(255 * (1-ratio)),blue:20,green:Math.floor(255 * ratio)},
-              "Ally"+v+"HP",
-              5000
-            );
-        });
-        createConnection(battlefield.allies["A"+v].crg,'cur');
-        battlefield.allies["A"+v].crg.bind_cur(function(){
-          objectz["nc"+intervalIndex] = numberTween(Number(getText("Ally"+v+"CRG").split("/")[0]), battlefield.allies["A"+v].crg.cur, 5000,"nc"+intervalIndex,"Ally"+v+"CRG", function(val) {
-              setText("Ally"+v+"CRG", Math.floor(val)+"/"+getText("Ally"+v+"CRG").split("/")[1]);
-            },function(){delete objectz["nc"+intervalIndex]});
-          
-        });
-      }
-      addBind(ti);
-      
-      turnOrder.push(["allies","A"+ti]);
-      battlefield.activeAllies.push(ti);
-      showElement("Ally"+ti);
-      showElement("Ally"+ti.toString()+"HPLabel");
-      showElement("Ally"+ti.toString()+"HP");
-      setText("Ally"+ti.toString()+"HPLabel",setTeam[member].Name);
-      setText("Ally"+ti.toString()+"HP",setTeam[member].hp+"/"+setTeam[member].hp);
-      ti = ti + 1;
+  for (var member in setTeam) {
+    setImageURL("Enemy"+teamIndex,setTeam[member].image || "Nil.png");
+    battlefield.allies["A"+teamIndex.toString()] = {
+      hp : {cur : setTeam[member].hp, max : setTeam[member].hp}, 
+      atk : {cur: setTeam[member].atk,max:setTeam[member].atk},
+      def : {cur: setTeam[member].def, max: setTeam[member].def},
+      crg: {cur: setTeam[member].crg || 0, max: setTeam[member].crg || 0},
+      buffs : {},
+      debuffs :{}, 
+      action : setTeam[member].action,
+      logic : setTeam[member].logic,
+      messages : setTeam[member].messages,
+      name : setTeam[member].Name,
+      self : "A"+teamIndex, 
+    };
+    function addBind(entityIndex) {
+      createConnection(battlefield.allies["A"+entityIndex].hp,'cur');
+      battlefield.allies["A"+entityIndex].hp.bind_cur(function(){
+          if (battlefield.allies["A"+entityIndex].hp.cur===0) {
+            battlefield.activeAllies.splice(battlefield.activeAllies.indexOf(entityIndex),1);
+            activeFailsafe();
+          }
+          objectz["nt"+intervalIndex] = numberTween(Number(getText("Ally"+entityIndex+"HP").split("/")[0]), battlefield.allies["A"+entityIndex].hp.cur, 5000,"nt"+intervalIndex,"Ally"+entityIndex+"HP", function(val) {//tweening a number to 50 in 2 seconds
+            setText("Ally"+entityIndex+"HP", Math.floor(val)+"/"+getText("Ally"+entityIndex+"HP").split("/")[1]);
+          },function(){delete objectz["nt"+intervalIndex]});
+          var ratio = battlefield.allies["A"+entityIndex].hp.cur / battlefield.allies["A"+entityIndex].hp.max;
+          var gradientShift = new gradientTransform(
+            null,
+            {red:Math.floor(255 * (1-ratio)),blue:20,green:Math.floor(255 * ratio)},
+            "Ally"+entityIndex+"HP",
+            5000
+          );
+      });
+      createConnection(battlefield.allies["A"+entityIndex].crg,'cur');
+      battlefield.allies["A"+entityIndex].crg.bind_cur(function(){
+        objectz["nc"+intervalIndex] = numberTween(Number(getText("Ally"+entityIndex+"CRG").split("/")[0]), battlefield.allies["A"+entityIndex].crg.cur, 5000,"nc"+intervalIndex,"Ally"+entityIndex+"CRG", function(val) {
+            setText("Ally"+entityIndex+"CRG", Math.floor(val)+"/"+getText("Ally"+entityIndex+"CRG").split("/")[1]);
+          },function(){delete objectz["nc"+intervalIndex]});  
+      });
     }
+    addBind(teamIndex);
+
+    turnOrder.push(["allies","A"+teamIndex]);
+    battlefield.activeAllies.push(teamIndex);
+    showElement("Ally"+teamIndex);
+    showElement("Ally"+teamIndex.toString()+"HPLabel");
+    showElement("Ally"+teamIndex.toString()+"HP");
+    setText("Ally"+teamIndex.toString()+"HPLabel",setTeam[member].Name);
+    setText("Ally"+teamIndex.toString()+"HP",setTeam[member].hp+"/"+setTeam[member].hp);
+    teamIndex += 1;
   }
   
   for (var member in enemies) {
-    setImageURL("Enemy"+ei,enemies[member].image || "Nil.png");
-    battlefield.enemies["E"+ei.toString()] = {
+    setImageURL("Enemy"+enemyIndex,enemies[member].image || "Nil.png");
+    battlefield.enemies["E"+enemyIndex.toString()] = {
       hp : {cur : enemies[member].hp, max : enemies[member].hp}, //the reason for the repeat is the current and max values
       atk : {cur : enemies[member].atk, max : enemies[member].atk},
       def : {cur : enemies[member].def, max : enemies[member].def},
@@ -1980,70 +1853,66 @@ function startBattle(enemies,setTeam,sndTrack) {//allow preset teams
       xp: enemies[member].xp || 1,
       rewards : enemies[member].rewards || null,
     };
-    function addBindE(v){ //ENEMY BIND
-      createConnection(battlefield.enemies["E"+v].hp,'cur');
-      battlefield.enemies["E"+v].hp.bind_cur(function(){
-        if (battlefield.enemies["E"+v].hp.cur == 0) {
-          setProperty("Enemy"+v,"border-width",25);
-          // for (var buff in battlefield.enemies["E"+v].buffs){deleteElement(buff+battlefield.enemies["E"+v].buffs[buff].index)}
-          // for (var debuff in battlefield.enemies["E"+v].debuffs){deleteElement(debuff+battlefield.enemies["E"+v].debuffs[debuff].index)}
+    function addBindE(entityIndex){ 
+      createConnection(battlefield.enemies["E"+entityIndex].hp,'cur');
+      battlefield.enemies["E"+entityIndex].hp.bind_cur(function(){
+        if (battlefield.enemies["E"+entityIndex].hp.cur == 0) {
+          setProperty("Enemy"+entityIndex,"border-width",25);
           var enemyAlpha = 1;
           function tickDeath2(){
             enemyAlpha -= 0.05;
             setTimeout(function(){
               if (enemyAlpha <=0.1){
-                setProperty("Enemy"+v,"border-color",rgb(255,255,255,enemyAlpha));
+                setProperty("Enemy"+entityIndex,"border-color",rgb(255,255,255,enemyAlpha));
                 return;
               }
-              setProperty("Enemy"+v,"border-color",rgb(255,255,255,enemyAlpha));
+              setProperty("Enemy"+entityIndex,"border-color",rgb(255,255,255,enemyAlpha));
               tickDeath2();
             },50);
           }
           tickDeath2();
-          battlefield.activeEnemies.splice(battlefield.activeEnemies.indexOf("E"+v),1);
-          activeFailsafe();//the death call can get retriggered for absolutely no reason
+          battlefield.activeEnemies.splice(battlefield.activeEnemies.indexOf("E"+entityIndex),1);
+          activeFailsafe();
         }
-        setPosition("Enemy"+v+"HPBar",265,49+(v*70),50*(battlefield.enemies["E"+v].hp.cur/battlefield.enemies["E"+v].hp.max),10);
-        setText("Enemy"+v+"HPLabel",battlefield.enemies["E"+v].hp.cur+"/"+ battlefield.enemies["E"+v].hp.max);
-        setPosition("Hurt_E"+v,
-          getProperty("Enemy"+v,"x")+(getProperty("Enemy"+v,"width")/2),
-          getProperty("Enemy"+v,"y")+(getProperty("Enemy"+v,"height")/2),
-          getProperty("Enemy"+v,"width"),
-          getProperty("Enemy"+v,"height")
+        setPosition("Enemy"+entityIndex+"HPBar",265,49+(entityIndex*70),50*(battlefield.enemies["E"+entityIndex].hp.cur/battlefield.enemies["E"+entityIndex].hp.max),10);
+        setText("Enemy"+entityIndex+"HPLabel",battlefield.enemies["E"+entityIndex].hp.cur+"/"+ battlefield.enemies["E"+entityIndex].hp.max);
+        setPosition("Hurt_E"+entityIndex,
+          getProperty("Enemy"+entityIndex,"x")+(getProperty("Enemy"+entityIndex,"width")/2),
+          getProperty("Enemy"+entityIndex,"y")+(getProperty("Enemy"+entityIndex,"height")/2),
+          getProperty("Enemy"+entityIndex,"width"),
+          getProperty("Enemy"+entityIndex,"height")
         );
       });
     }
-    addBindE(ei);
+    addBindE(enemyIndex);
     
-    turnOrder.push(["enemies","E"+ei]);
-    battlefield.activeEnemies.push("E"+ei);
-    showElement("Enemy"+ei);
-    showElement("Enemy"+ei+"HPBar");
-    showElement("Enemy"+ei+"HPLabel");
-    setPosition("Enemy"+ei+"HPBar",265,50+(ei*70),50*(enemies[member].hp.cur/enemies[member].hp.max),10);
-    setText("Enemy"+ei+"HPLabel",enemies[member].hp+"/"+ enemies[member].hp);
-    ei = ei + 1;
+    turnOrder.push(["enemies","E"+enemyIndex]);
+    battlefield.activeEnemies.push("E"+enemyIndex);
+    showElement("Enemy"+enemyIndex);
+    showElement("Enemy"+enemyIndex+"HPBar");
+    showElement("Enemy"+enemyIndex+"HPLabel");
+    setPosition("Enemy"+enemyIndex+"HPBar",265,50+(enemyIndex*70),50*(enemies[member].hp.cur/enemies[member].hp.max),10);
+    setText("Enemy"+enemyIndex+"HPLabel",enemies[member].hp+"/"+ enemies[member].hp);
+    enemyIndex = enemyIndex + 1;
   }
   
-  //make people randomly talk
   for (var a in battlefield.allies) {
     if (battlefield.allies[a]==undefined){continue}
-    if (randomNumber(1,2) > 1) { //~50% chance
+    if (randomNumber(1,2) > 1) {
       function nul (t){setTimeout(function(){speech("allies",t)},randomNumber(1000,3000))};
-      nul(a); //run a nested function so the values dont get duplicated
+      nul(a);
       continue;
     }
   }
   
   for (var y in battlefield.enemies) {
     if (battlefield.enemies[y]==undefined){continue}
-    if (randomNumber(1,10) > 3) { //~70% chance
+    if (randomNumber(1,10) > 3) {
       function nil (b){setTimeout(function(){speech("enemies",b)},randomNumber(1000,3000))}
-      nil(y);//run a nested function so the values dont get duplicated
+      nil(y);
       continue;
     }
   }
-  //opening animation
   setPosition("Ally1",-50,125,50,50);
   setPosition("Ally2",-50,195,50,50);
   setPosition("Enemy1",325,125,50,50);
@@ -2054,6 +1923,7 @@ function startBattle(enemies,setTeam,sndTrack) {//allow preset teams
   var Tw3 = new TweenService.create("Enemy1",{x:260},0.8,'Sine','In',60);
   var Tw4 = new TweenService.create("Enemy2",{x:260},0.95,'Sine','In',60);
   var Tw5 = new TweenService.create("Enemy3",{x:260},1.1,'Sine','In',60);
+  
   Tw1.play();
   Tw2.play();
   Tw3.play();
@@ -2062,10 +1932,9 @@ function startBattle(enemies,setTeam,sndTrack) {//allow preset teams
   cycle();
 }
 
-//MENU ELEMENTS
 var currentInventoryItems = [];
 function createInventoryItems(){
-  if (currentInventoryItems.length > 0) {//in case we call this while having the menu still active
+  if (currentInventoryItems.length > 0) {
     for (var obj in currentInventoryItems) {
       deleteElement("Inventory_"+currentInventoryItems[obj]);
       deleteElement("InventoryLabel_"+currentInventoryItems[obj]);
@@ -2132,33 +2001,32 @@ var buyPositions = {
   shopBuyButton : {x:70,y:270,width:80,height:30}
 };
 //SHOP HANDLER -------------------------------------///////////////////////////////////////////////////-------------
-var shop = {//trying a new cleaner approach here using the "this" keyword
-  shopElements : [],//I learned that "this" refers to the parent variable, so it helps a LOT with specific things
+var shop = {
+  shopElements : [],
   shopKeeperImage : "nil.png",
   shopItems : {}, 
-  update:function(newItems){//newItems is an array [n1,n2]
-    if (this.shopElements.length > 0) {//remove existing elements (if any)
+  update:function(newItems){
+    if (this.shopElements.length > 0) {
       for (var eachElement in this.shopElements) {
         deleteElement(this.shopElements[eachElement]);
       }
       this.shopElements = [];
     }
     setText("moneyLabel","You have $"+currency.Gold+"\n Inventory: "+Inventory.length+"/10 items");
-    for (var shopItems in newItems){//find each item the shop offers and make them available to buy
+    for (var shopItems in newItems){
       instance.newLabel("ShopBG_"+shopItems,10,10+(65*shopItems-1),195,60,rgb(138,138,138),"");
-      // setProperty("ShopBG_"+shopItems,"border-color",rgb(153,153,153));
       setProperty("ShopBG_"+shopItems,"border-width",2);
       setProperty("ShopBG_"+shopItems,"border-radius",2);
       instance.newImage("ShopPlaceholder_"+shopItems,5,5+(65*shopItems-1),70,70,"ItemFrame.png");
       instance.newImage("ShopImage_"+shopItems,15,15+(65*shopItems),50,50,items[newItems[shopItems]].image);
       instance.newLabel("ShopText_"+shopItems,80,30+(65*shopItems),120,50,rgb(255,255,255,0),items[newItems[shopItems]].name +": $"+items[newItems[shopItems]].price,rgb(255,255,255));
       instance.newLabel("ShopButton_"+shopItems,10,10+(65*shopItems-1),195,60,rgb(138,138,138,0),"");
-      this.shopElements.push("ShopImage_"+shopItems);//push elements for deletion
+      this.shopElements.push("ShopImage_"+shopItems);
       this.shopElements.push("ShopText_"+shopItems);
-      this.shopElements.push("ShopPlaceholder_"+shopItems);//push elements for deletion
+      this.shopElements.push("ShopPlaceholder_"+shopItems);
       this.shopElements.push("ShopButton_"+shopItems);
-      this.shopElements.push("ShopBG_"+shopItems);//push elements for deletion
-      function shopClick(index){//when an item is clicked, show some ui to view it
+      this.shopElements.push("ShopBG_"+shopItems);
+      function shopClick(index){
         onEvent("ShopButton_"+index,"click",function(){
           if (currency.Gold < items[newItems[index]].price) {
             gradientTransform({red:255,green:0,blue:0},{red:138,green:138,blue:138},"ShopBG_"+index,500);
@@ -2172,7 +2040,7 @@ var shop = {//trying a new cleaner approach here using the "this" keyword
           }
           playSound("Small_Click.mp3");
           setText("shopDesc",items[newItems[index]].desc);
-          instance.newLabel("InvisBlockerShop",0,0,320,450,rgb(0,0,0,0),"");//prevents other button triggers
+          instance.newLabel("InvisBlockerShop",0,0,320,450,rgb(0,0,0,0),"");
           instance.newLabel("shopBuyBG",-205,5,205,340,rgb(140, 130, 92),"");
           instance.newLabel("shopBuyLabel",-205,5,205,45,rgb(0,0,0,0),"BUY",rgb(255,255,255));
           setProperty("shopBuyLabel","text-align","center");
@@ -2195,21 +2063,21 @@ var shop = {//trying a new cleaner approach here using the "this" keyword
           s6.play();
           onEvent("shopBuyButton","click",function(){
             if (Inventory.length >= 10){playSound("OO_Miss.mp3");
-              return}//do not allow item overflow
+              return}
             if (items[newItems[index]].price>currency.Gold) {playSound("OO_Miss.mp3");
-              return}//price check
+              return}
             instance.newLabel("BuySlide",5,5,205,340,rgb(0,225,0),"");
             var t1 = new TweenService.create("BuySlide",{x:-205},0.2,'Sine','Out',60);
             t1.play();
             setTimeout(function(){
               deleteElement("BuySlide");
             },200);
-            currency.Gold-=items[newItems[index]].price;//give item and take away respective money
+            currency.Gold-=items[newItems[index]].price;
             Inventory.push(items[newItems[index]].name);
             setText("moneyLabel","You have $"+currency.Gold+"\n Inventory: "+Inventory.length+"/10 items");
             playSound("sound://category_collect/collect_item_bling_1.mp3");
           });
-          onEvent("shopBuyBack","click",function(){//back button
+          onEvent("shopBuyBack","click",function(){
             playSound("Select.mp3");
             setText("shopDesc","Click on an item to get started!");
             var s1 = new TweenService.create("shopBuyBG",{x:-205},0.3,'Sine',"In",60);
@@ -2239,7 +2107,7 @@ var shop = {//trying a new cleaner approach here using the "this" keyword
       shopClick(shopItems);
     }
   },
-  view: function(song,image){//basically show the shop and update neccessary UI for it (also play musik!!111!)
+  view: function(song,image){
     stopSound(curSong);
     curSong = song;
     playSound(curSong);
@@ -2251,7 +2119,7 @@ var shop = {//trying a new cleaner approach here using the "this" keyword
 onEvent("ShopExit","click",function(){
   for (var element in currentSceneElements){deleteElement(currentSceneElements[element])}
   
-  stopSound();//quit all songs
+  stopSound();
   sceneBuilder(world[location]);
 });
 
@@ -2371,11 +2239,11 @@ onEvent("back2","click",function(){
 });
 
 //STORY DIALOGUE ELEMENTS ------------------------////////////////////////////////////////////////-------------------------------
-var externalDiaIndex = 0; //used for npcs
-var shouldOverride = [null,null]; //allows easier overrides, contains args
+var externalDiaIndex = 0; 
+var shouldOverride = [null,null]; 
 
-function handleStory(){//check if the next section needs us to go to the next chapter
-  if (section.split(">")[1] === "NextChapter"){//check to go to the next ch
+function handleStory(){
+  if (section.split(">")[1] === "NextChapter"){
     chapter++;
     for (var storyPart in story["Ch"+chapter]) {if (storyPart.split(">")[0] == section.split(">")[2]){section = storyPart}}
   } else {
@@ -2402,7 +2270,7 @@ function continueDialogue(override,path) {
     return;
   }
   
-  if (SPart + 1 > story["Ch"+chapter][section].length-1){//mark completion of section
+  if (SPart + 1 > story["Ch"+chapter][section].length-1){
     handleStory();
     setScreen("WorldMap");
     SPart = -1;
@@ -2411,7 +2279,7 @@ function continueDialogue(override,path) {
     SPart++;
   }
   
-  dialogue(story["Ch"+chapter][section][SPart][0] ,story["Ch"+chapter][section][SPart][1] ,story["Ch"+chapter][section][SPart][2],story["Ch"+chapter][section][SPart][3],true);
+  dialogue(story["Ch"+chapter][section][SPart][0] , story["Ch"+chapter][section][SPart][1] , story["Ch"+chapter][section][SPart][2] , story["Ch"+chapter][section][SPart][3] , true);
 }
 
 var Q_Handler = []; //dictionary of player answers; lasts for the current session
@@ -2493,35 +2361,34 @@ function dialogue(speaker,text, check,voice,fromStory) {
   
   if (check) {
     text = text[Q_Handler[0].Choice];
-    Q_Handler.pop(); //only handle 1 question at once for now
+    Q_Handler.pop(); 
   }
   
   setText("Speaker",speaker);
   allowedToSkip = true;
-  var log = ""; //this keeps track of all the current dialogue
+  var log = ""; 
   
-  var index = 0; //we can't use a for loop, so use a manual index
-  var textIndex = 0;//if we need to split texts then do this
-  var allTexts = splitText(text);//returns an array with nested objects: [{"normal" : insertTextHere}]
-  var readableText = "";//does not have a guarenteed chance of making TTS work right
-  for (var i = 0; i < allTexts.length; i++) {//PRELOAD EMPTY TEXT BOXES TO BE FILLED IN
+  var index = 0; 
+  var textIndex = 0;
+  var allTexts = splitText(text);
+  var readableText = "";
+  for (var i = 0; i < allTexts.length; i++) {
     var x = 10 + currentOffset.x;
     var y = 340 + currentOffset.y;
-    var textObj = allTexts[i];//grabs the string
+    var textObj = allTexts[i];
     var textValue = textObj.normal;
     var labelWidth = textValue.length * 7; //7.2 is the character width but we round (lowered as it fits better, the actual is 7.6)
     
     if (currentOffset.x + labelWidth > 300) {
       x=10;
       currentOffset.x= labelWidth + 7;
-      currentOffset.y += 16;//we really shouldn't have a word that spans 2 lines
+      currentOffset.y += 16;
       y = 340 + currentOffset.y;
     } else {
       currentOffset.x += labelWidth + 7;
       textValue+= " ";
     }
     
-    //add on top of the dialogue box's dimensions
     readableText+=textValue;
     instance.newLabel("dialogueText_" + i, x, y, labelWidth+8, 17, rgb(25,25,25,0), "",rgb(0,0,0));
     setStyle("dialogueText_"+i, "font-family: monospace; font-size: 13px");
@@ -2544,9 +2411,9 @@ function dialogue(speaker,text, check,voice,fromStory) {
       deleteElement("DialogueBox");
       for (var element in activeDialogueBoxes){deleteElement(activeDialogueBoxes[element])}
       activeDialogueBoxes = [];
-      if (shouldOverride[0]) { //in case we are in dialogue, however this may get removed
+      if (shouldOverride[0]) { 
         continueDialogue(shouldOverride[0],shouldOverride[1]);
-      } else { //this system is up for deletion; the game is not a visual novel
+      } else {
         continueDialogue(); 
       }
       deleteElement("ContinueDialogue");
@@ -2554,44 +2421,42 @@ function dialogue(speaker,text, check,voice,fromStory) {
     });
   }
   // if (randomNumber(0,1) === 0){playSpeech(readableText,"male","English (UK)")} else {playSpeech(readableText,"female","English (UK)")}//TTS
-  function typeNextChar() {//we should hop from one text box to another for this
-    if (skip && allowedToSkip) { //allow skipping if the plr is bored
+  function typeNextChar() {
+    if (skip && allowedToSkip) {
       skip = false;
       allowedToSkip = false;
       for (var i = 0; i < allTexts.length; i++) {setText("dialogueText_"+i,allTexts[i].normal)}
       createNextButton();
       return;
     }
-    if (index >= allTexts[textIndex].normal.length) {//we need to go to the next word
+    if (index >= allTexts[textIndex].normal.length) {
       index = 0;
       log = "";
       textIndex++;
     }
-    if (textIndex > allTexts.length-1){//we know the dialogue is finished!
+    if (textIndex > allTexts.length-1){
       createNextButton();
       allowedToSkip = false;
-      return; // Done typing
+      return;
     }
     if (voice) {playSound(voice)} else {playSound("OO_Talk.mp3")}
-    //show character portrait here (if they have one, but default when needed)
-    var char = allTexts[textIndex].normal[index]; //grab the letter, or character (because of spaces and symbols)
-    log += char; //we add on the string, I didn't even know you could do += like python lol
-    setText("dialogueText_"+textIndex, log); //update the dialogue box
-    index++; //because this isn't a for loop, manually up the index by 1
+    var char = allTexts[textIndex].normal[index]; 
+    log += char; 
+    setText("dialogueText_"+textIndex, log);
+    index++; 
     
-    var delay = 45; //this is how we calculate the text waiting times (MS)
+    var delay = 45; 
     
-    if (char === ".") delay = 800;//these help make punctuations feel more impactful
+    if (char === ".") delay = 800;
     else if (char === "?") delay = 700;
     else if (char === ",") delay = 600;
     else if (char === "!") delay = 800;
 
-    setTimeout(typeNextChar, delay); //call the function and add the new delay
+    setTimeout(typeNextChar, delay);
   }
-  typeNextChar(); // Start typing
+  typeNextChar(); 
 }
 
-// dialogue("Bean studious","Hi! my name is <rgb(150,150,0)> bob!. I live in those |<anim(bounce)> grasslands| beside you!");
 var HQMapData = [];
 var HQIndex = 0;
 var map = {
@@ -2600,22 +2465,20 @@ var map = {
   render : function(){
     setText("locationLabelMap","Location: "+location);
     setScreen("Map");
-    if (map.HQ === true) {//we want to use the mobile layout mode if we have this active
+    if (map.HQ === true) {
       var areasNeeded = {};
       var area = location.split("_")[0];
       var anchor = "";
       for (var areas in world){
         if (anchor === "" && areas.split("_")[0] === location.split("_")[0]) {anchor = areas}
         if (areas.split("_")[0] === area) {
-          if (areas.includes("[")){continue}//bracketed locations are mutations or subsections of regular areas
-          // areasNeeded.push({areas : {}});
+          if (areas.includes("[")){continue}
           areasNeeded[areas] = {};
         }
       }
-      areasNeeded[anchor] = {x:0,y:0};//this is our "origin" point
-      //now, we propagate how they route into each other and discard routes that go into different areas
+      areasNeeded[anchor] = {x:0,y:0};
       
-      function directionVector(dir){//we add by what this gives us to our coordinate plane
+      function directionVector(dir){
         switch (dir) {
           case "up":
             return {x:0,y:1};
@@ -2629,9 +2492,9 @@ var map = {
       }
       function branchHQ(newLocation, oldLocVectors){
         for (var allDestinations in world[newLocation].Next){
-          var dirVec = directionVector(allDestinations);//find where it should be offsetted as a coordinate point
+          var dirVec = directionVector(allDestinations);
           if ((world[newLocation].Next[allDestinations]).split("_")[0] != area) {continue}
-          if (Object.keys(areasNeeded[world[newLocation].Next[allDestinations]]).length === 0){//we dont want to update already updates coords
+          if (Object.keys(areasNeeded[world[newLocation].Next[allDestinations]]).length === 0){
             areasNeeded[world[newLocation].Next[allDestinations]] = {x:dirVec.x + oldLocVectors.x,y:dirVec.y + oldLocVectors.y,tag:"B_"};
             instance.newLabel("B_"+world[newLocation].Next[allDestinations],
               135 + ((areasNeeded[world[newLocation].Next[allDestinations]].x*50)),
@@ -2765,10 +2628,9 @@ var map = {
           areasNeeded[areas] = {}
         }
       }
-      areasNeeded[anchor] = {x:0,y:0};//this is our "origin" point
-      //now, we propagate how they route into each other and discard routes that go into different areas
+      areasNeeded[anchor] = {x:0,y:0};
       
-      function directionVector(dir){//we add by what this gives us to our coordinate plane
+      function directionVector(dir){
         switch (dir) {
           case "up":
             return {x:0,y:1};
@@ -2784,7 +2646,7 @@ var map = {
         for (var allDestinations in world[newLocation].Next){
           var dirVec = directionVector(allDestinations);
           if ((world[newLocation].Next[allDestinations]).split("_")[0] != area) {continue}
-          if (Object.keys(areasNeeded[world[newLocation].Next[allDestinations]]).length === 0){//we dont want to update already updates coords
+          if (Object.keys(areasNeeded[world[newLocation].Next[allDestinations]]).length === 0){
             areasNeeded[world[newLocation].Next[allDestinations]] = {x:dirVec.x + oldLocVectors.x, y:dirVec.y + oldLocVectors.y, tag:"B_"};
             instance.newLabel("B_"+world[newLocation].Next[allDestinations],
               135 + ((areasNeeded[world[newLocation].Next[allDestinations]].x * 50)),
@@ -2839,13 +2701,13 @@ onEvent("back6","click",function(){
 
 var currentSceneElements = [];
 
-function createDestination(scene,dir){ //animation
-  var ranName = 1;//unique index identifier
+function createDestination(scene,dir){ 
+  var ranName = 1;
   var documents = [];
   instance.newLabel("BLOCKER",0,0,320,450,rgb(255,255,255,0),"");
   
-  for (var element in currentSceneElements) { //MOVE THESE OUT OF THE WAY
-    var e = currentSceneElements[element];//element name
+  for (var element in currentSceneElements) { 
+    var e = currentSceneElements[element];
     var tween = dir == "up" && new TweenService.create(e,{y: getProperty(e,"y") + 450},0.6,'Sine','In',60) || dir == "down" && new TweenService.create(e,{y: getProperty(e,"y") - 450},0.6,'Sine','In',60) || dir == "left" && new TweenService.create(e,{x: getProperty(e,"x") + 320},0.6,'Sine','In',60) || dir == "right" && new TweenService.create(e,{x: getProperty(e,"x") - 320},0.6,'Sine','In',60);
     tween.play();
   }
@@ -2854,7 +2716,7 @@ function createDestination(scene,dir){ //animation
     var x_o = (dir == "left" && -320 || dir == "right" && 320 || 0);
     var y_o = (dir == "up" && 450 || dir == "down" && -450 || 0);
     
-    for (var elements in scene.Areas) {//load scene elements
+    for (var elements in scene.Areas) {
       documents.push("TransitionFrame"+ranName);
       image("TransitionFrame"+ranName ,scene.Areas[elements].image || "Nil.png");
       setPosition(scene.Areas[elements].id,scene.Areas[elements].x+ x_o,scene.Areas[elements].y + y_o ,scene.Areas[elements].width,scene.Areas[elements].height);
@@ -2862,7 +2724,7 @@ function createDestination(scene,dir){ //animation
       ranName++;
     }
     
-    for (var doc in documents) { //MOVE INTO FRAME
+    for (var doc in documents) {
       var arrow = documents[doc];
       var sceneAnim = dir == "up" && new TweenService.create(arrow,{y: getProperty(arrow,"y") - 450},0.3,'Sine','In',60) || dir == "down" && new TweenService.create(arrow,{y: getProperty(arrow,"y") + 450},0.3,'Sine','In',60) || dir == "left" && new TweenService.create(arrow,{x: getProperty(arrow,"x") + 320},0.3,'Sine','In',60) || dir == "right" && new TweenService.create(arrow,{x: getProperty(arrow,"x") - 320},0.3,'Sine','In',60);
       sceneAnim.play();
@@ -2873,7 +2735,7 @@ function createDestination(scene,dir){ //animation
     for (var index = 0; index < currentSceneElements.length; index++){deleteElement(currentSceneElements[index])}
   },650);
   
-  setTimeout(function(){ //quickly swap out the elements
+  setTimeout(function(){
     currentSceneElements = [];
     for (var doc in documents) {deleteElement(documents[doc]);}
     deleteElement("BLOCKER");
@@ -2882,25 +2744,24 @@ function createDestination(scene,dir){ //animation
 }
 
 function actionBuilder(action,obj,required){
-  if (action && action === "goto") { //location sender
+  if (action && action === "goto") { 
     onEvent(obj.id,"click",function(){
       for (var index = 0; index < currentSceneElements.length; index++){deleteElement(currentSceneElements[index])}
       location = obj.location;
       sceneBuilder(world[obj.location]);
     });
-  } else if (required && action == "requiredDialogue") {//prioritize the required event above all else
+  } else if (required && action == "requiredDialogue") {
     onEvent(obj.id,"click",function(){
       if (obj.data) {internalData.push(obj.data)} 
       shouldOverride = [true,obj.requiredDialogue];
       continueDialogue(true, obj.requiredDialogue);
     });
-  } else if (action && action === "dialogue") { //flavor dialogue
+  } else if (action && action === "dialogue") { 
     onEvent(obj.id,"click",function(){
       if (obj.data) {internalData.push(obj.data)} 
       shouldOverride = [true,obj.dialogue];
       continueDialogue(true, obj.dialogue);
     });
-    //figure out the dialogue system here idk
   }else if (action && action ==="cutscene"){
     onEvent(obj.id,"click",function(){
       if (obj.data) {internalData.push(obj.data)} 
@@ -2910,21 +2771,21 @@ function actionBuilder(action,obj,required){
   } else if (action && action === "shop"){
     onEvent(obj.id,"click",function(){
       shop.view(obj.shop[1],obj.shop[2]);
-      shop.update(obj.shop[0]);//the screen should update first before rendering this
+      shop.update(obj.shop[0]);
     });
   }
 }
 
-function sceneBuilder(scene) {//this is how each section of a map is built
+function sceneBuilder(scene) {
   currentSceneElements = [];
   setScreen("WorldMap");
-  if (curSong != scene.Music){//dont interrupt current song unless we need to change.
+  if (curSong != scene.Music){
     stopSound(curSong);
     curSong = scene.Music;
     playSound(scene.Music,true);
   }
-  var hiddenList = [];//what elements shouldn't be shown to the player on the map
-  if (scene.Events) {//we should check events first, this determines redirects and what elements are hidden
+  var hiddenList = [];
+  if (scene.Events) {
     for (var event in scene.Events){
       if (scene.Events[event].action === "goto") {
         for (var data in internalData) {
@@ -2948,13 +2809,13 @@ function sceneBuilder(scene) {//this is how each section of a map is built
   var bareBgValues = stripRGBValues(scene.Background);
   var bgShift = new gradientTransform(null,{red:bareBgValues.red ,green:bareBgValues.green ,blue:bareBgValues.blue},"WorldMap",500);
 
-  for (var elements in scene.Areas) {//load scene elements
-    var skip = false;//all of this to keep an element hidden is overkill but I can't think of another way without rewriting more stuff
+  for (var elements in scene.Areas) {
+    var skip = false;
     for (var ex in hiddenList) {if (scene.Areas[elements].id == hiddenList[ex]){skip=true;
       continue}}
-    if (skip) {continue}//skip this element if its supposed to be hidden
+    if (skip) {continue}
     var requirement = false;
-    currentSceneElements.push(scene.Areas[elements].id); //here is why you cannot have duplicate element names!
+    currentSceneElements.push(scene.Areas[elements].id); 
     if (scene.Areas[elements].image == "|") {
       instance.newLabel(scene.Areas[elements].id,scene.Areas[elements].x,scene.Areas[elements].y,scene.Areas[elements].width,scene.Areas[elements].height,scene.Areas[elements].color,"");
     } else {
@@ -2966,17 +2827,17 @@ function sceneBuilder(scene) {//this is how each section of a map is built
       if (splitE[0] == "Ch"+chapter && splitE[1] == section) {
         console.log("requirements met!")
       } else {
-        requirement=true;//this technically makes it skip the other two IFs below it
-        hideElement(scene.Areas[elements].id);//also hide it so you dont confuse the player
+        requirement=true;
+        hideElement(scene.Areas[elements].id);
       }
     }
-    if (scene.Areas[elements].requiredEvent != null){//check if there is a neccessary req. event
+    if (scene.Areas[elements].requiredEvent != null){
       for (var event in internalData){if (internalData[event] === scene.Areas[elements].requiredEvent){actionBuilder(scene.Areas[elements].requiredAction,scene.Areas[elements],true),requirement = true}}//loop through the player's events and find if they meet a satisfied event
     }
     if (!requirement) {actionBuilder(scene.Areas[elements].action,scene.Areas[elements])}
   }
-  //ARROWS
-  for (var dir in scene.Next) {//this is the best replacement instead of a player character
+
+  for (var dir in scene.Next) {
     if (!scene.Next[dir]){break}
     image(dir,"icon://fa-long-arrow-"+dir);
     setPosition(dir, 
@@ -2993,8 +2854,6 @@ function sceneBuilder(scene) {//this is how each section of a map is built
   }
 }
 
-//STORY CONTENT ; LEAVE AT THE BOTTOM FOR READABILITY
-
 /*
 Using InternalObjects gathered from the player's data, this can be used to specifically trigger events
 or set objectives by making objects unviewable if already fought or interacted with, so InternalData may get very messy
@@ -3004,7 +2863,7 @@ var world = { //open world loader; may need to give device time to load; I tried
   "Woodrock_South_Enterance" : {//you should name a location: parentName_subsection because the parentName is used to find area-based songs and backgrounds
     Name: "Woodrock_South_Enterance",
     Background : "rgb(109,173,60)", //make sure Areas are rendered from lowest depth to highest! works like a draw order!
-    Areas : [ //the actual areas of the map
+    Areas : [ 
       {id: "Building_A3",image : "building_A.png",x: 0,y:-20,width: 100, height: 200, action: null},
       {id: "Building_B3",image : "building_A.png",x: 220,y:-20,width: 100, height: 200, action: null},
       {id: "PathVertical",image:"|",x:125,y:0,width:80,height:290,action: null,color: rgb(241,223,117)},
@@ -3035,7 +2894,7 @@ var world = { //open world loader; may need to give device time to load; I tried
       {id: "BattleGuy",image:"angryMan.png", x: 80, y: 375, width: 50, height: 50, action: "dialogue", dialogue : [["man","Yo you wanna pick a <rgb(255,0,0)>fight with me bruv?"],["/B",[[enemies.Dummy,enemies.Spiker1,enemies.Spiker1],[player, characters.MG_Tut]]]], requiredEvent:"WarDiscount", requiredAction:"requiredDialogue", requiredDialogue: [["Guy","Woah woah dude, we already fought"]]}
     ],
     Music: "The_sky_of_woodrock.mp3",
-    Next: {up : "Woodrock_Plaza",left: "Woodrock_Street_1",right:"Woodrock_Street_2"} //where the arrows go to
+    Next: {up : "Woodrock_Plaza",left: "Woodrock_Street_1",right:"Woodrock_Street_2"} 
   },
   "Woodrock_Street_1":{
     Name: "Woodrock_Street_1",
@@ -3115,8 +2974,8 @@ var world = { //open world loader; may need to give device time to load; I tried
   },
   "Woodrock_Plaza" : {
     Name : "Woodrock_Plaza",
-    Background : "rgb(111,173,60)", //make sure Areas are rendered from lowest depth to highest! works like a draw order!
-    Areas : [ //the actual areas of the map
+    Background : "rgb(111,173,60)", 
+    Areas : [
       {id: "PathHorizontal",image:"|",x:0,y:200,width:340,height:50,action: null, color: rgb(241,223,117)},
       {id: "PathHorizontal2",image:"|",x:0,y:250,width:340,height:5,action: null, color: rgb(201,169,87)},
       {id: "PathVertical",image:"|",x:125,y:0,width:80,height:430,action: null,color: rgb(241,223,117)},
@@ -3136,8 +2995,8 @@ var world = { //open world loader; may need to give device time to load; I tried
   },
   "Woodrock_Bank":{
     Name : "Woodrock_Bank",
-    Background : "rgb(56,214,82)", //make sure Areas are rendered from lowest depth to highest! works like a draw order!
-    Areas : [ //the actual areas of the map
+    Background : "rgb(56,214,82)",
+    Areas : [ 
       {id: "PathVertical1",image:"|",x:80,y:0,width:40,height:100,action: null,color: rgb(241,223,117)},
       {id: "PathHorizontal1",image:"|",x:0,y:200,width:40,height:50,action: null, color: rgb(241,223,117)},
       {id: "PathHorizontal1_shadow",image:"|",x:0,y:250,width:40,height:5,action: null, color: rgb(201,169,87)},
@@ -3166,7 +3025,7 @@ var world = { //open world loader; may need to give device time to load; I tried
       {id: "library", image: "library.png",x:200,y:-10,width:100,height:100,action:"goto",location:"Library_Woodrock"},
     ],
     Music: "The_sky_of_woodrock.mp3",
-    Next: {left:"Woodrock_Plaza",down:"Woodrock_Street_2"} //where the arrows go to
+    Next: {left:"Woodrock_Plaza",down:"Woodrock_Street_2"} 
   },
   "Woodrock_Road_2" : {
     Name: "Woodrock_Road_2",
@@ -3194,7 +3053,7 @@ var world = { //open world loader; may need to give device time to load; I tried
     Music: "The_sky_of_woodrock.mp3",
     Next: {down:"Woodrock_Plaza",up:"Woodrock_Park"},
     Events: { //EVENTS NEED TO HAVE ONE GOTO ONLY, OTHER GOTOS AFTER THE FIRST WILL BE IGNORED
-      KnightBeat: {action: "goto", goto: "Woodrock_Well[night]"}, //if it finds this in player's InternalData, then tp to that instead
+      KnightBeat: {action: "goto", goto: "Woodrock_Well[night]"},
     }
   },
   "Woodrock_Well[night]" : {
@@ -3234,15 +3093,15 @@ var world = { //open world loader; may need to give device time to load; I tried
     Areas: [
       {id: "fell", x:140,y:120,width:30,height:30},
       {id:"wall",image: "Man_Silhouette.png", x:50,y:50,width:50,height:50,action:"dialogue",dialogue:[["man","Im in your walls"]]},
-      {id: "STORYMAN", x:150,y:75,width:50,height:50,action:"cutscene", storyEvent : "Ch1/Grassfield_1>Grassfield_2"},//if they are not on that scene, then dont show this event
+      {id: "STORYMAN", x:150,y:75,width:50,height:50,action:"cutscene", storyEvent : "Ch1/Grassfield_1>Grassfield_2"},
     ],
     Music: "Plains.mp3",
     Next: {down:"Woodrock_Park"},
   },
 };
 
-var story = {//really scuffed version of cutscenes but I can't really do much here
-  "Ch1" : {//instead of sections(called scenes in-game) using magic numbers, they use currentArea>NextArea or currentArea>NextChapter(command)>nextAreaInNextChapter
+var story = {
+  "Ch1" : {
     "Intro>Grassfield_1" : [
       ["citizen", "What's that guy doing?"],
       ["???", "I am an evil man, I have come to bring havoc to your city"],
@@ -3302,48 +3161,34 @@ var story = {//really scuffed version of cutscenes but I can't really do much he
   }
 }
 
-
-var objective = {//this helps the player know where to go and what to do
-  "Ch1" : {//allign with "cutscenes" and game events
-    0: {
-      Image: null,
-      text: "Find the plaza in the north and see whats happening in there",
-    },
-    1:{
-      Image:null,
-      text: "talk with the residents and see if you can find where the guy went",
-    }
-  }
-};
-
 onEvent("Story","click",function(){
   dialogue(story["Ch"+chapter][section][SPart][0],story["Ch"+chapter][section][SPart][1]);
 });
 
 onEvent("PlayButton","click",function(){playSound("Small_Click.mp3"),setScreen("WorldMap")});
 
-function capFirstLetter(str) { //yeah really
-  if (str.length === 0) {return ""} //empty strings
+function capFirstLetter(str) { 
+  if (str.length === 0) {return ""} 
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
-//the tutorial was scrapped due to the complexity
+
 //ACCOUNT EVENTS
 
 onEvent("createAccount","click",function(){setScreen("AccountCreationScreen"),playSound("Small_Click.mp3")});
 
 //CREATION--CREATION--CREATION--CREATION--CREATION--CREATION--CREATION--CREATION--CREATION--
 
-var ACCooldown = false; //discourage spamming, it may overload the system
-//accounts may not have the "~" symbol because it is used for decoding
+var ACCooldown = false; 
+
 onEvent("UsernameCreation","input",function(){if (getText("UsernameCreation").length >= 20) {setText("UsernameCreation",getText("UsernameCreation").substring(0,19))}});
 
 onEvent("createConfirm","click",function(){
   var error = "";
   playSound("Select.mp3");
   if (ACCooldown) {return}
-  setText("createConfirm","..."); //visual indicator that the proccess is sent
+  setText("createConfirm","..."); 
   var canCreate = true;
-  readRecords("Users",{},function(records){//first check; for same usernames
+  readRecords("Users",{},function(records){
     if (records.length > 0) {
       for (var i=0; i< records.length; i++){
         if (((records[i].UsernamePassword).split("~"))[0] === getText("UsernameCreation")){
@@ -3358,11 +3203,11 @@ onEvent("createConfirm","click",function(){
   
   var splitUser = getText("UsernameCreation").split("");
   for (var splitChar in splitUser) { //prevent the "~" from being used
-    if (splitUser[splitChar] === "~") {//we dont care if "~" is used in the password, just the username
+    if (splitUser[splitChar] === "~") {
       error = "do not use the '~' symbol";
       showElement("creationError");
       setText("creationError",error);
-      return;//FLAG AS INVALID
+      return;
     }
   }
   
@@ -3371,15 +3216,15 @@ onEvent("createConfirm","click",function(){
     setText("createConfirm","10s");
     if (canCreate == false) {return}
     createRecord("Users",{
-      UsernamePassword: getText("UsernameCreation")+"~"+getText("PasswordCreation"), //combine the username and password to save data space
+      UsernamePassword: getText("UsernameCreation")+"~"+getText("PasswordCreation"), 
       InternalData : "",//this is here for world events, and game metadata
       Currency : "Gold~15",
-      XP: 0,//xp curve: 10x^1.5 (rounded)
-      Inventory: "sugar_apple/mango/coconut",//might change to nothing after CAC build
-      Story: "Ch1/Woodrock_South_Enterance/Section~Intro>Grassfield_1/SPart~-1", //this is used to figure out save points and dialogue/cutscene points
+      XP: 0,
+      Inventory: "sugar_apple/mango/coconut",
+      Story: "Ch1/Woodrock_South_Enterance/Section~Intro>Grassfield_1/SPart~-1", 
       EnchantData : "sword-m1~true/cannon-m1~false/staff-m1~false/bow-m1~false/sword-m2~false/bow-m2~false",
     },function(record){
-      readRecords("Users",{},function(records){//read records right after to perform a login; also serves a a sanity check
+      readRecords("Users",{},function(records){
         if (records.length<0){return}
         for (var pl=0; pl<records.length;pl++){
           if (getText("UsernameCreation")+"~"+getText("PasswordCreation") === records[pl].UsernamePassword) {
@@ -3396,12 +3241,12 @@ onEvent("createConfirm","click",function(){
         }
       });
     });
-  },1000); //1 sec delay bc of data retrieval desync
+  },1000); 
   setTimeout(function(){ACCooldown = false,setText("createConfirm","create")},10000);
 });
 
-function loadPlayerData(){//load them into the menu and start decoding everything into readable bits
-  enchants.equipped = []; //because this can be used to load a save after dying, we want to ensure its empy
+function loadPlayerData(){
+  enchants.equipped = [];
   enchants.unequipped = [];
   var splitName = playerData.UsernamePassword.split("~");
   player.Name = splitName[0];
@@ -3410,17 +3255,16 @@ function loadPlayerData(){//load them into the menu and start decoding everythin
   var tcurrency = decodeData(playerData.Currency,true);
   for (var money in tcurrency){currency[tcurrency[money][0]] = tcurrency[money][1]}
   var splitStory = decodeData(playerData.saveData,true);
-  var decompressedEnchants = decodeData(playerData.EnchantData,true);//returns a nested array
+  var decompressedEnchants = decodeData(playerData.EnchantData,true);
   for (var ench in decompressedEnchants) {if (decompressedEnchants[ench][1] == "true") {enchants.equipped.push(decompressedEnchants[ench][0])} else {enchants.unequipped.push(decompressedEnchants[ench][0])}}
   location = splitStory[1];
   chapter = splitStory[0].substring(2,splitStory[0].length);
   section = splitStory[2][1];
   SPart = splitStory[3][1];
-  sceneBuilder(world[location]); //scene builder needs the two above vars to load in before it
-  updatePlayerData("lvl");
-  // if (enchants.equipped.length>0){return}
+  sceneBuilder(world[location]); 
+  updatePlayerLevels();
   enchants.update();
-}//APPLY DATA HERE ONCE PROPERLY RETRIEVED
+}
 
 onEvent("login","click",function(){setScreen("LoginScreen"),playSound("Small_Click.mp3")});
 
@@ -3430,9 +3274,9 @@ onEvent("LoginButton","click",function(){
   if (ALCooldown) {return}
   ALCooldown = true;
   setText("LoginButton","...");
-  var found = false; //if not found, show an error
-  var combinedUserData =getText("loginUser")+"~"+getText("loginPass"); //remember the username and password are combined in the database
-  readRecords("Users",{},function(records){//the below updates async, so no set timeout is needed
+  var found = false; 
+  var combinedUserData =getText("loginUser")+"~"+getText("loginPass");
+  readRecords("Users",{},function(records){
     if (records.length<0){return}
     for (var pl=0; pl<records.length;pl++){
       if (combinedUserData === records[pl].UsernamePassword) {
@@ -3482,7 +3326,7 @@ var wheel = {//WEIGHT IS OUT OF 360! Min should be 20 (reccomended at least), 40
         tweenOut.play();
         foundPrize = true;
       }
-      if (!foundPrize) {//deal with the nothing space
+      if (!foundPrize) {
         setText("prompt","you won nothing!!! like actually...");
       }
     }
@@ -3493,13 +3337,13 @@ var wheel = {//WEIGHT IS OUT OF 360! Min should be 20 (reccomended at least), 40
       setTimeout(function(){
         if (velocity<0.05){wheel.reward(),velocity=0;
           return}
-        //find the next wheel position using the same math formula (add velocity)
+
         for (var obj in wheel.elements){
           if (obj == "nothing"){continue}
           var nextv= (wheel.elements[obj].degree+velocity) % 360//this keeps it within the 360 deg. range and allows for high velocities
           if (wheel.elements[obj].degree < 90 && nextv>=90 || wheel.elements[obj].degree>nextv){playSound("sound://category_objects/click.mp3")}  
           wheel.elements[obj].degree = nextv;
-          setPosition(obj,//split like this to make it easier to read the math
+          setPosition(obj,
             155-(wheelRadius*Math.cos(nextv*(pi/180))),//remember the nextv is always stored in deg. so reconvert it back to radians
             210-(wheelRadius*Math.sin(nextv*(pi/180))),
             25,
@@ -3507,7 +3351,7 @@ var wheel = {//WEIGHT IS OUT OF 360! Min should be 20 (reccomended at least), 40
           );
           wheel.elements[obj].degree += velocity;
         }
-        velocity*=0.96;// 4% energy loss per iteration
+        velocity*=0.96;
         tick();
       },20);
     }
@@ -3548,9 +3392,7 @@ onEvent("spinButton","click",function(){if (spinDebounce) {return}
   setScreen("SpinWheel"),wheel.update(list);});
 
 var list = [];
-// for (var v = 0;v<6;v++){
-//   list.push(["item"+v,60]);
-// }
+
 for (var v = 0;v<30;v++){//as long as v and the weight multiplied by each other are equal to or less than 360, it will work
   list.push(["item"+v,10]);//20 is the "weight"
 }
@@ -3577,7 +3419,6 @@ onEvent("Lobby","keypress",function(e){
   }
 });
 
-//init music
 curSong = "recursion_main.mp3";
 playSound("recursion_main.mp3",true);
 console.log("Client took "+(getTime()-startTime).toString()+ " miliseconds to initialize.");
